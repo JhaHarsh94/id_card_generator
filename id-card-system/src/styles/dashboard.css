@@ -1,0 +1,605 @@
+/* ==========================================================================
+   Admin shell layout
+   ========================================================================== */
+
+.admin {
+  display: grid;
+  /* minmax(0, 1fr) rather than 1fr: a bare `1fr` track has an automatic
+     minimum, so the fixed-width ID card preview would stretch the whole grid
+     past the viewport and force horizontal scrolling on phones. */
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+/* ---- sidebar ------------------------------------------------------------ */
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--brand-blue);
+  color: #fff;
+  overflow: hidden;
+  z-index: 40;
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-5) var(--sp-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sidebar__logo {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: var(--r-sm);
+  object-fit: contain;
+  background: #fff;
+  padding: 2px;
+}
+
+.sidebar__org {
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.sidebar__org-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__org-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.62);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-4) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar__group-label {
+  padding: var(--sp-4) var(--sp-3) var(--sp-2);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.sidebar__group-label:first-child { padding-top: 0; }
+
+.navlink {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 9px var(--sp-3);
+  border-radius: var(--r-md);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13.5px;
+  font-weight: 550;
+  text-decoration: none;
+  transition: background-color 0.14s var(--ease), color 0.14s var(--ease);
+}
+
+.navlink:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+  text-decoration: none;
+}
+
+.navlink.active {
+  background: var(--brand-red);
+  color: #fff;
+  font-weight: 650;
+  box-shadow: var(--shadow-sm);
+}
+
+.navlink svg { flex: none; }
+
+.navlink__count {
+  margin-left: auto;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.navlink.active .navlink__count { background: rgba(0, 0, 0, 0.22); }
+
+.sidebar__footer {
+  padding: var(--sp-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sidebar__user {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2);
+  border-radius: var(--r-md);
+  min-width: 0;
+}
+
+.sidebar__user-avatar {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ---- main --------------------------------------------------------------- */
+
+.admin__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.admin__header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 0 var(--sp-6);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.admin__header-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.admin__content {
+  flex: 1;
+  padding: var(--sp-6);
+  min-width: 0;
+}
+
+.admin__footer {
+  padding: var(--sp-5) var(--sp-6);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--ink-500);
+}
+
+/* mobile menu button.
+   `.btn` also sets `display: inline-flex` at equal specificity, so this rule
+   needs to outrank it rather than rely on source order. */
+.sidebar .sidebar-toggle,
+.admin__header .sidebar-toggle {
+  display: none;
+}
+
+.sidebar__scrim {
+  display: none;
+}
+
+/* ==========================================================================
+   Page scaffolding
+   ========================================================================== */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  max-width: 1400px;
+  /* Without this the fixed-width card preview can force the whole page wider
+     than the viewport on small screens. */
+  min-width: 0;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.page-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.page-sub {
+  color: var(--ink-500);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   Dashboard stat cards
+   ========================================================================== */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  gap: var(--sp-4);
+}
+
+.stat {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow 0.18s var(--ease), transform 0.18s var(--ease);
+}
+
+.stat:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.stat::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--stat-accent, var(--brand-blue));
+}
+
+.stat__icon {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  background: var(--stat-icon-bg, var(--brand-blue-100));
+  color: var(--stat-accent, var(--brand-blue));
+}
+
+.stat__label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+  line-height: 1.35;
+}
+
+.stat__value {
+  display: block;
+  font-size: 25px;
+  font-weight: 750;
+  line-height: 1.15;
+  color: var(--ink-900);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Add/Edit member: two-column form + sticky preview
+   ========================================================================== */
+
+.member-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+.member-form-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+
+.preview-col {
+  position: sticky;
+  top: calc(var(--header-h) + var(--sp-6));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.preview-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.preview-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--ink-50);
+}
+
+.preview-panel__title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-600);
+}
+
+/**
+ * The card is always rendered at its true 856x540 size and scaled with a
+ * transform, so the preview is pixel-identical to the exported file - only
+ * smaller. The wrapper reserves the scaled height so nothing overflows.
+ */
+/* The card wrapper must not be a shrink-to-fit grid item: with
+   `place-items: center` the item's width resolves from its content, so the
+   unscaled 856px card would keep the container at 856px and the scale
+   calculation would never reduce anything. Block layout + auto margins keeps
+   the measured width honest. */
+.preview-stage {
+  padding: var(--sp-5);
+  display: block;
+  overflow: hidden;
+  background:
+    linear-gradient(45deg, #fafbfd 25%, transparent 25%) 0 0 / 16px 16px,
+    linear-gradient(-45deg, #fafbfd 25%, transparent 25%) 0 8px / 16px 16px,
+    linear-gradient(45deg, transparent 75%, #fafbfd 75%) 8px -8px / 16px 16px,
+    linear-gradient(-45deg, transparent 75%, #fafbfd 75%) -8px 0 / 16px 16px,
+    var(--white);
+}
+
+.preview-panel__actions {
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.preview-panel__actions .btn { flex: 1; min-width: 120px; }
+
+.form-actions {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding-top: var(--sp-1);
+}
+
+/* ==========================================================================
+   Dashboard two-column layout
+   ========================================================================== */
+
+.dash-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .dash-cols { grid-template-columns: 1fr; }
+}
+
+/* ---- expiry list ---- */
+
+.expiry-list li + li {
+  border-top: 1px solid var(--ink-100);
+}
+
+.expiry-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-6);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.12s var(--ease);
+}
+
+.expiry-row:hover {
+  background: var(--brand-blue-50);
+  text-decoration: none;
+}
+
+/* ==========================================================================
+   Filter chips + search
+   ========================================================================== */
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-full);
+  background: var(--white);
+  color: var(--ink-700);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.14s var(--ease);
+}
+
+.filter-chip:hover {
+  border-color: var(--brand-blue-300);
+  color: var(--brand-blue);
+  background: var(--brand-blue-50);
+}
+
+.filter-chip.active {
+  background: var(--brand-blue);
+  border-color: var(--brand-blue);
+  color: var(--white);
+}
+
+.filter-chip__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: var(--r-full);
+  background: var(--ink-100);
+  color: var(--ink-700);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.filter-chip.active .filter-chip__count {
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--white);
+}
+
+.search-input {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 240px;
+  height: 40px;
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  background: var(--white);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  color: var(--ink-400);
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.search-input:focus-within {
+  border-color: var(--brand-blue-300);
+  box-shadow: 0 0 0 3px var(--brand-blue-100);
+}
+
+.search-input__field {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--ink-900);
+}
+
+.search-input__field::-webkit-search-cancel-button { display: none; }
+
+/* sortable table headers */
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
+.th-sort:hover { color: var(--brand-blue); }
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 1180px) {
+  .member-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .preview-col {
+    position: static;
+    order: -1; /* preview first on narrower screens */
+  }
+}
+
+@media (max-width: 1024px) {
+  .admin {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: var(--sidebar-w);
+    transform: translateX(-100%);
+    transition: transform 0.22s var(--ease);
+    box-shadow: var(--shadow-xl);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar .sidebar-toggle,
+  .admin__header .sidebar-toggle {
+    display: inline-flex;
+  }
+
+  .sidebar__scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(16, 19, 42, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s var(--ease);
+  }
+
+  .sidebar__scrim.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .admin__content { padding: var(--sp-4); }
+  .admin__header { padding: 0 var(--sp-4); }
+}
+
+@media (max-width: 640px) {
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .stat { padding: var(--sp-4); gap: var(--sp-3); }
+  .stat__value { font-size: 21px; }
+  .stat__icon { width: 36px; height: 36px; }
+  .page-head__actions { width: 100%; }
+  .page-head__actions .btn { flex: 1; }
+}

@@ -1,0 +1,11 @@
+.badge-sm {
+  height: 20px;
+  padding: 0 7px;
+  font-size: 10.5px;
+}
+
+.badge-lg {
+  height: 28px;
+  padding: 0 14px;
+  font-size: 13px;
+}

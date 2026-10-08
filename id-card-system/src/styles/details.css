@@ -1,0 +1,83 @@
+/* ==========================================================================
+   Verification lookup
+   ========================================================================== */
+
+.verify-lookup {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-3);
+}
+
+.lookup-result {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 560px) {
+  .verify-lookup { flex-direction: column; align-items: stretch; }
+  .verify-lookup .btn { margin-top: 0 !important; }
+}
+
+/* ==========================================================================
+   Member details page
+   ========================================================================== */
+
+.details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+/**
+ * Checkerboard behind the card, mirroring the admin preview panel so the card
+ * reads the same way in both places.
+ */
+.details-card {
+  padding: var(--sp-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background:
+    linear-gradient(45deg, #fafbfd 25%, transparent 25%) 0 0 / 16px 16px,
+    linear-gradient(-45deg, #fafbfd 25%, transparent 25%) 0 8px / 16px 16px,
+    linear-gradient(45deg, transparent 75%, #fafbfd 75%) 8px -8px / 16px 16px,
+    linear-gradient(-45deg, transparent 75%, #fafbfd 75%) -8px 0 / 16px 16px,
+    var(--white);
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-list > div {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: var(--sp-3);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--ink-100);
+  align-items: baseline;
+}
+
+.detail-list > div:last-child { border-bottom: none; }
+
+.detail-list dt {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+}
+
+.detail-list dd {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-900);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1080px) {
+  .details-grid { grid-template-columns: minmax(0, 1fr); }
+  .detail-list > div { grid-template-columns: 1fr; gap: 2px; }
+}

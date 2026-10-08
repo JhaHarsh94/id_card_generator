@@ -1,0 +1,26 @@
+# Build output and dependencies
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment - never commit real keys
+.env
+.env.*
+!.env.example
+
+# Reference material and analysis output (not part of the app bundle)
+reference-analysis/
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log

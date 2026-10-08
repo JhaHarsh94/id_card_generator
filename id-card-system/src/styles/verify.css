@@ -1,0 +1,210 @@
+/* ==========================================================================
+   Public verification page
+   ========================================================================== */
+
+.verify {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-app);
+}
+
+.verify__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-6);
+  background: var(--brand-blue);
+  color: #fff;
+}
+
+.verify__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.verify__logo {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: var(--r-sm);
+  object-fit: contain;
+  background: #fff;
+  padding: 2px;
+}
+
+.verify__org {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.verify__org-sub {
+  display: block;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.verify__top .btn-ghost {
+  color: rgba(255, 255, 255, 0.85);
+  flex: none;
+}
+
+.verify__top .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.verify__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  padding: var(--sp-8) var(--sp-4);
+}
+
+.verify__card {
+  width: 100%;
+  max-width: 520px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.verify__card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  background: var(--ink-50);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-600);
+}
+
+.verify__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-12) var(--sp-6);
+}
+
+/* ---- status block ---- */
+
+.verify__status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  color: #fff;
+}
+
+.verify__status--ok { background: var(--status-active); }
+.verify__status--warn { background: var(--status-expired); }
+.verify__status--bad { background: var(--status-revoked); }
+.verify__status--none { background: var(--ink-700); }
+
+.verify__status svg { flex: none; }
+
+.verify__headline {
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+}
+
+.verify__note {
+  margin-top: 3px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ---- fields ---- */
+
+.verify__fields {
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.verify__fields > div {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: var(--sp-4);
+  padding: 11px 0;
+  border-bottom: 1px solid var(--ink-100);
+  align-items: baseline;
+}
+
+.verify__fields > div:last-child { border-bottom: none; }
+
+.verify__fields dt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+}
+
+.verify__fields dt svg { flex: none; }
+
+.verify__fields dd {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-900);
+  overflow-wrap: anywhere;
+}
+
+.verify__footer-note {
+  padding: var(--sp-3) var(--sp-5) var(--sp-5);
+  font-size: 11.5px;
+  color: var(--ink-500);
+  border-top: 1px solid var(--ink-100);
+}
+
+.verify__demo {
+  max-width: 520px;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--white);
+  font-size: 12px;
+  color: var(--ink-600);
+  text-align: center;
+}
+
+.verify__foot {
+  padding: var(--sp-5) var(--sp-6);
+  border-top: 1px solid var(--border);
+  background: var(--white);
+  font-size: 11.5px;
+  color: var(--ink-500);
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .verify__top { padding: var(--sp-3) var(--sp-4); }
+  .verify__fields > div { grid-template-columns: 1fr; gap: 2px; }
+  .verify__headline { font-size: 20px; }
+  .verify__status { padding: var(--sp-4); gap: var(--sp-3); }
+}
