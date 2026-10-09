@@ -158,6 +158,51 @@ function escapeHtml(value) {
 }
 
 /**
+ * Share the card.
+ *
+ * Uses the Web Share API with the card image attached, which on Android and
+ * desktop Chrome opens the system share sheet (WhatsApp, Telegram, email...).
+ *
+ * The share API is only available on HTTPS or localhost, and `files` support is
+ * patchy on desktop Firefox, so callers must handle `fallback`.
+ *
+ * @returns {Promise<'shared'|'cancelled'|'fallback'>}
+ */
+export async function shareCard(node, member, { verifyUrl, organization, fallback } = {}) {
+  let canShareFile = false;
+  let dataUrl = null;
+
+  try {
+    dataUrl = await cardToPngDataUrl(node);
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], safeFilename(member, 'png'), { type: 'image/png' });
+    canShareFile = Boolean(navigator.canShare?.({ files: [file] }));
+
+    if (canShareFile) {
+      const payload = {
+        files: [file],
+        title: member?.fullName ? `${member.fullName} — ID card` : 'ID card',
+        text: verifyUrl
+          ? `${organization?.name ?? ''} ID card${verifyUrl ? `\n${verifyUrl}` : ''}`
+          : organization?.name ?? '',
+      };
+      if (verifyUrl) payload.url = verifyUrl;
+
+      await navigator.share(payload);
+      return 'shared';
+    }
+  } catch (err) {
+    // AbortError means the user closed the share sheet - not a failure.
+    if (err?.name === 'AbortError') return 'cancelled';
+    canShareFile = false;
+  }
+
+  // Fall back to whatever the browser can do.
+  await fallback?.({ dataUrl, verifyUrl, canShareFile });
+  return 'fallback';
+}
+
+/**
  * Combined PDF for several cards, laid out 2x2 on A4.
  * Used by bulk generation (Phase 14).
  * @param {HTMLElement[]} nodes
