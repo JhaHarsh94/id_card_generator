@@ -72,13 +72,7 @@ function IDCardTemplate(
         <div className="idcard__header-bg idcard__diagonal" />
 
         <div className="idcard__header-text">
-          <div className={`idcard__org-name ${fit(org.name, 'size-md', 'size-sm')}`}>
-            {org.name ?? ''}
-            {org.registrationMark ? <sup>{org.registrationMark}</sup> : null}
-          </div>
-          {org.nameHi ? <div className="idcard__org-name-hi">{org.nameHi}</div> : null}
-
-          {/* Registration number, centred directly beneath the organisation name */}
+          {/* Registration number, centred directly beneath the 3D trust name */}
           {org.registrationText ? (
             <div className="idcard__registration">{org.registrationText}</div>
           ) : null}

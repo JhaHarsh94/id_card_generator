@@ -59,7 +59,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 202px;
+  height: 150px;
   overflow: hidden;
 }
 
@@ -70,9 +70,9 @@
 .idcard__logo {
   position: absolute;
   right: 22px;
-  top: 16px;
-  width: 106px;
-  height: 106px;
+  top: 12px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   background: var(--c-white);
   /* the white ring keeps the edge readable over both the blue and red halves */
@@ -89,29 +89,28 @@
   padding: 4px;
 }
 
-/* ---- English trust name, beside the logo -------------------------------
-   3D effect built from layered text-shadow: a gold face, a red mid-layer and a
-   navy deep layer. Two colours of extrusion plus the face, which keeps the
-   text readable where it crosses from the blue field onto the red diagonal.
+/* ---- English trust name: the single bold, highlighted heading ----------
+   Sits centred in the header with the registration number beneath it. Bounded
+   so it can never run under the logo disc at the top-right.
    -------------------------------------------------------------------------- */
 
 .idcard__trust {
   position: absolute;
-  left: 24px;
-  right: 140px;   /* clears the logo disc */
-  top: 40px;
+  left: 30px;
+  right: 30px;
+  top: 44px;
   z-index: 2;
-  text-align: right;
+  text-align: center;
 }
 
 .idcard__trust-name {
   display: inline-block;
   color: var(--c-gold);
-  font-size: 25px;
+  font-size: 27px;
   font-weight: 800;
-  line-height: 1.12;
-  letter-spacing: 0.045em;
-  text-align: right;
+  line-height: 1.1;
+  letter-spacing: 0.05em;
+  text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
   /* Shallower 3D: three tight layers rather than six. Kept layered so the gold
@@ -123,23 +122,21 @@
     4px 4px 6px rgba(0, 0, 0, 0.45);
 }
 
-.idcard__trust-name.size-md { font-size: 21px; }
-.idcard__trust-name.size-sm { font-size: 18px; }
+.idcard__trust-name.size-md { font-size: 23px; }
+.idcard__trust-name.size-sm { font-size: 20px; }
 
 .idcard__header-text {
-  position: relative;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* pushed to the bottom so the name sits under the logo disc */
-  justify-content: flex-end;
-  gap: 1px;
-  /*
-   * The Hindi name sits under the trust-name / logo row. Centring it across the
-   * full width keeps it on the card's true centre line.
-   */
-  padding: 0 40px 12px 40px;
+  justify-content: center;
+  /* sit under the 3D trust name, clear of the logo disc */
+  padding-top: 52px;
   text-align: center;
 }
 
@@ -309,10 +306,10 @@
 
 .idcard__body {
   position: absolute;
-  top: 202px;
+  top: 150px;
   left: 0;
   right: 0;
-  height: 230px;
+  height: 282px;
   background: var(--c-white);
 }
 
