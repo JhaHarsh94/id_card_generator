@@ -69,8 +69,8 @@
 
 .idcard__logo {
   position: absolute;
-  left: 34px;
-  top: 10px;
+  left: 30px;
+  top: 16px;
   width: 176px;
   height: 176px;
   display: grid;
@@ -342,9 +342,9 @@
 
 .idcard__identity {
   position: absolute;
-  left: 224px;
-  top: 20px;
-  width: 356px;
+  left: 208px;
+  top: 40px;
+  width: 380px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -365,7 +365,7 @@
 .idcard__name.size-sm { font-size: 31px; }
 
 .idcard__designation {
-  margin-top: 10px;
+  margin-top: 14px;
   color: var(--c-red);
   font-size: 30px;
   font-weight: 700;
@@ -378,7 +378,7 @@
 .idcard__designation.size-sm { font-size: 22px; }
 
 .idcard__state {
-  margin-top: 4px;
+  margin-top: 8px;
   color: var(--c-red);
   font-size: 30px;
   font-weight: 700;
@@ -391,7 +391,7 @@
 .idcard__state.size-sm { font-size: 22px; }
 
 .idcard__validity {
-  margin-top: 10px;
+  margin-top: 14px;
   color: var(--c-blue);
   font-size: 28px;
   font-weight: 700;
@@ -402,7 +402,7 @@
 .idcard__validity em { font-style: normal; font-weight: 700; }
 
 .idcard__scope {
-  margin-top: 5px;
+  margin-top: 9px;
   color: var(--c-blue);
   font-size: 15px;
   font-weight: 800;
@@ -412,10 +412,17 @@
 
 /* ---- member ID number (dynamic, fixed position) ------------------------ */
 
+/* ---- member ID number (dynamic, fixed position) ------------------------
+   Centred directly beneath the photo rather than pushed to the right edge,
+   which was leaving an unbalanced gap beside the signatory.
+   -------------------------------------------------------------------------- */
+
 .idcard__idno {
   position: absolute;
-  right: 20px;
-  top: 148px;
+  left: 632px;
+  top: 160px;
+  width: 190px;
+  text-align: center;
   color: var(--c-blue);
   font-size: 19px;
   font-weight: 800;
@@ -429,7 +436,7 @@
   left: 632px;
   top: 8px;
   width: 190px;
-  height: 140px;
+  height: 154px;
   overflow: hidden;
   border: 6px solid var(--c-red);
   background: var(--c-red-50, #fdeef0);
@@ -455,10 +462,10 @@
 
 .idcard__qr {
   position: absolute;
-  left: 632px;
-  top: 172px;
-  width: 60px;
-  height: 60px;
+  left: 626px;
+  top: 190px;
+  width: 64px;
+  height: 64px;
   padding: 3px;
   background: var(--c-white);
   border: 1px solid var(--c-blue);
@@ -475,9 +482,9 @@
 
 .idcard__qr-label {
   position: absolute;
-  left: 622px;
-  top: 236px;
-  width: 72px;
+  left: 614px;
+  top: 258px;
+  width: 90px;
   text-align: center;
   color: var(--c-blue);
   font-size: 8px;
@@ -494,10 +501,10 @@
 
 .idcard__seal {
   position: absolute;
-  left: 576px;
-  top: 64px;
-  width: 108px;
-  height: 88px;
+  left: 572px;
+  top: 72px;
+  width: 106px;
+  height: 86px;
   display: grid;
   place-items: center;
   pointer-events: none;
@@ -529,9 +536,9 @@
 
 .idcard__signatory {
   position: absolute;
-  left: 700px;
-  top: 172px;
-  width: 132px;
+  left: 704px;
+  top: 196px;
+  width: 118px;
   text-align: right;
 }
 
