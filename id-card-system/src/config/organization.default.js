@@ -8,16 +8,18 @@
  * value occupies is part of the design and cannot change; the values themselves
  * are editable through Settings.
  *
- * `isDemo: true` keeps development honest: demo records are labelled so they
- * can never be mistaken for a genuine credential.
+ * `isDemo: false` - the organisation details below are the client's real,
+ * confirmed values, so the "DEMO DATA" watermark is switched off. The seeded
+ * MEMBER records are still placeholders and are replaced on first real use.
  */
 
-import logoUrl from '../assets/org/logo.png';
-import stampUrl from '../assets/org/stamp.png';
+import logoUrl from '../assets/org/logo-client.png';
+import stampUrl from '../assets/org/stamp-client.png';
 import signatureUrl from '../assets/org/signature.png';
 
 export const organizationDefaults = {
-  isDemo: true,
+  /** Controls the "DEMO DATA" watermark. Real organisation - off. */
+  isDemo: false,
 
   // ---- header -----------------------------------------------------------
   /** Main heading in the header band. */
@@ -40,7 +42,7 @@ export const organizationDefaults = {
   isoText: '',
 
   // ---- assets -----------------------------------------------------------
-  /** Square organisation logo, left side of the card body. */
+  /** Organisation logo, shown on the white disc at the top of the header. */
   logoUrl,
   /**
    * Circular rubber stamp overlapping the member photo - the organisation's

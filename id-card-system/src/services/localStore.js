@@ -20,7 +20,12 @@ import { organizationDefaults } from '../config/organization.default';
  * cached v3 organisation settings would still point at the old portrait.
  */
 const MEMBERS_KEY = 'idcms.members.v4';
-const ORG_KEY = 'idcms.organization.v4';
+/**
+ * v5: the DEMO DATA watermark was switched off for real organisation details.
+ * Bumped so any settings cached by an earlier version (which stored
+ * isDemo: true) cannot keep re-enabling it.
+ */
+const ORG_KEY = 'idcms.organization.v5';
 
 /* ==========================================================================
    Demo seed - clearly marked placeholder data

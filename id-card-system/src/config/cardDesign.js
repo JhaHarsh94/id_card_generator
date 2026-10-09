@@ -87,7 +87,11 @@ export const BOXES = {
   /** Directly beneath the photo; shares that row with the signatory. */
   qr: { left: 636, top: 188, width: 66, height: 66 },
   /** Overlaps the lower-left corner of the photo, as on the reference. */
-  seal: { left: 600, top: 110, width: 84, height: 84 },
+  /**
+   * Rectangular, matching the stamp asset's 620x505 aspect ratio. The client's
+   * signature extends beyond the round ink, so a square slot would clip it.
+   */
+  seal: { left: 576, top: 64, width: 108, height: 88 },
   signatory: { left: 712, top: 186, width: 120 },
 };
 

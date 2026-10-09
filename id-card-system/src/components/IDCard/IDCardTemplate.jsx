@@ -79,6 +79,11 @@ function IDCardTemplate(
           {org.nameHi ? <div className="idcard__org-name-hi">{org.nameHi}</div> : null}
         </div>
 
+        {/* organisation logo, top-centre of the header */}
+        <div className="idcard__logo">
+          {org.logoUrl ? <img src={org.logoUrl} alt="" /> : null}
+        </div>
+
         {/* Registration number, top-left of the header band */}
         {org.registrationText ? (
           <div className="idcard__header-side idcard__header-side--left">
@@ -111,12 +116,6 @@ function IDCardTemplate(
 
       {/* ================= BODY ================= */}
       <div className="idcard__body">
-        {/* organisation logo - fixed slot */}
-        <div className="idcard__logo">
-          <span className="idcard__logo-frame" aria-hidden="true" />
-          {org.logoUrl ? <img src={org.logoUrl} alt="" /> : null}
-        </div>
-
         {/* member identity - dynamic */}
         <div className="idcard__identity">
           <div className={`idcard__name ${fit(name, 'size-md', 'size-sm')}`}>

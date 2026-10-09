@@ -59,11 +59,36 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 152px; /* taller: registration + founder now live in the header */
+  height: 202px;
   overflow: hidden;
 }
 
 .idcard__header-bg { --diag-left: 60%; }
+
+/* ---- logo disc, top-centre --------------------------------------------- */
+
+.idcard__logo {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  width: 104px;
+  height: 104px;
+  margin-left: -52px;
+  border-radius: 50%;
+  background: var(--c-white);
+  /* the white ring keeps the edge readable over both the blue and red halves */
+  border: 3px solid var(--c-white);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+  z-index: 2;
+}
+
+.idcard__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
 
 .idcard__header-text {
   position: relative;
@@ -71,15 +96,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* pushed to the bottom so the name sits under the logo disc */
+  justify-content: flex-end;
   gap: 1px;
-  /* Side blocks now carry registration + founder, so reserve room for both. */
   /*
    * Side blocks carry registration (left) and founder (right). The padding is
    * asymmetric on purpose: the right block is three lines tall, so it needs more
    * clearance from the centred organisation name than the left one does.
    */
-  padding: 0 252px 0 196px;
+  padding: 0 236px 14px 196px;
   text-align: center;
 }
 
@@ -232,61 +257,28 @@
 }
 
 /* ==========================================================================
-   BODY  (30.4% - 80%)
+   BODY  (37.4% - 80%)
    ========================================================================== */
 
 .idcard__body {
   position: absolute;
-  top: 152px; /* header only - the sub-header band was removed */
+  top: 202px;
   left: 0;
   right: 0;
-  height: 280px;
+  height: 230px;
   background: var(--c-white);
 }
 
-/* ---- organisation logo block ------------------------------------------- */
-
-.idcard__logo {
-  position: absolute;
-  left: 34px;
-  top: 8px;
-  width: 172px;
-  height: 172px;
-  display: grid;
-  place-items: center;
-  padding: 8px;
-  background: var(--c-white);
-  border: 1px solid var(--c-blue-100, #dfe3f4);
-  overflow: hidden;
-}
-
-/* the logo block is itself a blue/red diagonal tile */
-.idcard__logo-frame {
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(
-    to bottom right,
-    var(--c-blue) 0%,
-    var(--c-blue) 52%,
-    var(--c-red) 52%,
-    var(--c-red) 100%
-  );
-}
-
-.idcard__logo img {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-/* ---- member identity (dynamic) ----------------------------------------- */
+/* ---- identity (dynamic) ------------------------------------------------
+   The left logo block was removed from the body when the logo moved up into
+   the header, so the identity block now spans the full left side.
+   -------------------------------------------------------------------------- */
 
 .idcard__identity {
   position: absolute;
-  left: 222px;
-  top: 14px;
-  width: 352px;
+  left: 40px;
+  top: 16px;
+  width: 542px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -357,7 +349,7 @@
 .idcard__idno {
   position: absolute;
   right: 24px;
-  top: 182px;
+  top: 152px;
   color: var(--c-blue);
   font-size: 16px;
   font-weight: 800;
@@ -368,10 +360,10 @@
 
 .idcard__photo {
   position: absolute;
-  left: 630px;
-  top: 18px;
+  left: 632px;
+  top: 8px;
   width: 190px;
-  height: 160px;
+  height: 140px;
   overflow: hidden;
   border: 6px solid var(--c-red);
   background: var(--c-red-50, #fdeef0);
@@ -397,10 +389,10 @@
 
 .idcard__qr {
   position: absolute;
-  left: 630px;
-  top: 244px;
-  width: 64px;
-  height: 64px;
+  left: 632px;
+  top: 172px;
+  width: 60px;
+  height: 60px;
   padding: 3px;
   background: var(--c-white);
   border: 1px solid var(--c-blue);
@@ -417,25 +409,29 @@
 
 .idcard__qr-label {
   position: absolute;
-  left: 610px;
-  top: 310px;
-  width: 82px;
+  left: 612px;
+  top: 234px;
+  width: 80px;
   text-align: center;
   color: var(--c-blue);
-  font-size: 6px;
+  font-size: 5.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-/* ---- authority seal (overlaps photo, fixed slot) ----------------------- */
+/* ---- authority seal (overlaps photo, fixed slot) -----------------------
+   Rectangular, not circular: the client's signature runs out to the right of
+   the round ink, so a round mask would cut it off. The box matches the asset's
+   620x505 aspect ratio.
+   -------------------------------------------------------------------------- */
 
 .idcard__seal {
   position: absolute;
-  left: 594px;
-  top: 106px;
-  width: 82px;
-  height: 82px;
+  left: 576px;
+  top: 64px;
+  width: 108px;
+  height: 88px;
   display: grid;
   place-items: center;
   pointer-events: none;
@@ -468,8 +464,8 @@
 .idcard__signatory {
   position: absolute;
   left: 706px;
-  top: 246px;
-  width: 128px;
+  top: 176px;
+  width: 126px;
   text-align: right;
 }
 
