@@ -77,34 +77,28 @@ function IDCardTemplate(
             {org.registrationMark ? <sup>{org.registrationMark}</sup> : null}
           </div>
           {org.nameHi ? <div className="idcard__org-name-hi">{org.nameHi}</div> : null}
+
+          {/* Registration number, centred directly beneath the organisation name */}
+          {org.registrationText ? (
+            <div className="idcard__registration">{org.registrationText}</div>
+          ) : null}
         </div>
 
-        {/* organisation logo, top-centre of the header */}
+        {/* English trust name in 3D, beside the logo */}
+        {org.trustNameEn ? (
+          <div className="idcard__trust">
+            <div className={`idcard__trust-name ${fit(org.trustNameEn, 'size-md', 'size-sm')}`}>
+              {org.trustNameEn}
+            </div>
+          </div>
+        ) : null}
+
+        {/* organisation logo, top-right of the header */}
         <div className="idcard__logo">
           {org.logoUrl ? <img src={org.logoUrl} alt="" /> : null}
         </div>
 
-        {/* Registration number, top-left of the header band */}
-        {org.registrationText ? (
-          <div className="idcard__header-side idcard__header-side--left">
-            <span className="idcard__header-side-value">{org.registrationText}</span>
-          </div>
-        ) : null}
-
-        {/* Founder, top-right of the header band */}
-        {org.founderName || org.founderPhone ? (
-          <div className="idcard__header-side idcard__header-side--right">
-            {org.founderLabel ? (
-              <span className="idcard__header-side-label">{org.founderLabel}</span>
-            ) : null}
-            {org.founderName ? (
-              <span className="idcard__header-side-value">{org.founderName}</span>
-            ) : null}
-            {org.founderPhone ? (
-              <span className="idcard__header-side-label">{org.founderPhone}</span>
-            ) : null}
-          </div>
-        ) : null}
+        {/* Registration number now renders inside header-text, beneath the name */}
 
         {/* Certification badge - omitted entirely when the organisation has none */}
         {org.isoText ? (

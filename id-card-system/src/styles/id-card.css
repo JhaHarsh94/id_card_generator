@@ -65,15 +65,14 @@
 
 .idcard__header-bg { --diag-left: 60%; }
 
-/* ---- logo disc, top-centre --------------------------------------------- */
+/* ---- logo disc, top-right --------------------------------------------- */
 
 .idcard__logo {
   position: absolute;
-  left: 50%;
-  top: 10px;
-  width: 104px;
-  height: 104px;
-  margin-left: -52px;
+  right: 22px;
+  top: 16px;
+  width: 106px;
+  height: 106px;
   border-radius: 50%;
   background: var(--c-white);
   /* the white ring keeps the edge readable over both the blue and red halves */
@@ -90,6 +89,43 @@
   padding: 4px;
 }
 
+/* ---- English trust name, beside the logo -------------------------------
+   3D effect built from layered text-shadow: a gold face, a red mid-layer and a
+   navy deep layer. Two colours of extrusion plus the face, which keeps the
+   text readable where it crosses from the blue field onto the red diagonal.
+   -------------------------------------------------------------------------- */
+
+.idcard__trust {
+  position: absolute;
+  left: 24px;
+  right: 140px;   /* clears the logo disc */
+  top: 40px;
+  z-index: 2;
+  text-align: right;
+}
+
+.idcard__trust-name {
+  display: inline-block;
+  color: var(--c-gold);
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: 0.045em;
+  text-align: right;
+  text-transform: uppercase;
+  white-space: nowrap;
+  /* Shallower 3D: three tight layers rather than six. Kept layered so the gold
+     face still separates cleanly from whichever field colour it crosses. */
+  text-shadow:
+    1px 1px 0 var(--c-red-dark),
+    2px 2px 0 #7d1018,
+    3px 3px 0 var(--c-blue-dark),
+    4px 4px 6px rgba(0, 0, 0, 0.45);
+}
+
+.idcard__trust-name.size-md { font-size: 21px; }
+.idcard__trust-name.size-sm { font-size: 18px; }
+
 .idcard__header-text {
   position: relative;
   height: 100%;
@@ -100,11 +136,10 @@
   justify-content: flex-end;
   gap: 1px;
   /*
-   * Side blocks carry registration (left) and founder (right). The padding is
-   * asymmetric on purpose: the right block is three lines tall, so it needs more
-   * clearance from the centred organisation name than the left one does.
+   * The Hindi name sits under the trust-name / logo row. Centring it across the
+   * full width keeps it on the card's true centre line.
    */
-  padding: 0 236px 14px 196px;
+  padding: 0 40px 12px 40px;
   text-align: center;
 }
 
@@ -132,10 +167,22 @@
   text-align: left;
 }
 
-.idcard__header-side--right {
-  right: 20px;
-  align-items: flex-end;
-  text-align: right;
+/* ---- registration number, centred under the organisation name --------- */
+
+.idcard__registration {
+  margin-top: 7px;
+  color: var(--c-white);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+  text-align: center;
+  /* sits across the diagonal boundary, so it needs its own contrast */
+  text-shadow:
+    0 1px 0 var(--c-blue-dark),
+    1px 0 0 var(--c-blue-dark),
+    -1px 0 0 var(--c-blue-dark),
+    0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
 .idcard__header-side-label {

@@ -33,10 +33,12 @@ export const organizationDefaults = {
   /** Top-left of the header band. */
   registrationText: 'पंजीकरण सं० : 29/2024',
 
-  /** Top-right of the header band. */
-  founderLabel: 'संस्थापक सत्यापक',
-  founderName: 'मनोज कुमार',
-  founderPhone: 'मो० 9458447100',
+  /**
+   * English trust name, shown in 3D beside the logo at the top-right.
+   * Rendered gold with a red-then-navy extrusion (two colours) so it stays
+   * legible over both the blue and the red halves of the header.
+   */
+  trustNameEn: 'PUNAM KABIRA SARV DHARAM SAHAYATA TRUST',
 
   /** Optional certification badge. Empty = badge not rendered. */
   isoText: '',
