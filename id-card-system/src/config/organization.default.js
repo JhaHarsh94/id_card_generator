@@ -55,8 +55,8 @@ export const organizationDefaults = {
   signatureUrl,
 
   // ---- signatory (fixed on every card) ----------------------------------
-  signatoryName: 'मनोज कुमार',
-  signatoryDesignation: 'संस्थापक सत्यापक',
+  signatoryName: 'मनोज कुमार कबीरा',
+  signatoryDesignation: 'संस्थापक/अध्यक्ष',
 
   // ---- fixed copy -------------------------------------------------------
   /** Small line under the validity date. */
@@ -64,7 +64,7 @@ export const organizationDefaults = {
 
   /** Supporting / objective band above the footer. */
   supportText:
-    'जनकल्याण विश्वास : बाल विवाह, अनाताल विवाह, अनाम विवाह, दहेज प्रथा - 250605',
+    'जनकल्याण विश्वास : बाल विवाह, अनाताल विवाह, अनाम विवाह, दहेज प्रथा',
 
   /**
    * Footer band. `\n` renders as a line break.
