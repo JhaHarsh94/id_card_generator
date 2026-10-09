@@ -79,6 +79,28 @@ function IDCardTemplate(
           {org.nameHi ? <div className="idcard__org-name-hi">{org.nameHi}</div> : null}
         </div>
 
+        {/* Registration number, top-left of the header band */}
+        {org.registrationText ? (
+          <div className="idcard__header-side idcard__header-side--left">
+            <span className="idcard__header-side-value">{org.registrationText}</span>
+          </div>
+        ) : null}
+
+        {/* Founder, top-right of the header band */}
+        {org.founderName || org.founderPhone ? (
+          <div className="idcard__header-side idcard__header-side--right">
+            {org.founderLabel ? (
+              <span className="idcard__header-side-label">{org.founderLabel}</span>
+            ) : null}
+            {org.founderName ? (
+              <span className="idcard__header-side-value">{org.founderName}</span>
+            ) : null}
+            {org.founderPhone ? (
+              <span className="idcard__header-side-label">{org.founderPhone}</span>
+            ) : null}
+          </div>
+        ) : null}
+
         {/* Certification badge - omitted entirely when the organisation has none */}
         {org.isoText ? (
           <div className="idcard__iso">
@@ -86,11 +108,6 @@ function IDCardTemplate(
           </div>
         ) : null}
       </header>
-
-      {/* ================= SUB-HEADER (fixed) ================= */}
-      <div className="idcard__subheader">
-        <div className="idcard__subheader-text">{org.registrationText ?? ''}</div>
-      </div>
 
       {/* ================= BODY ================= */}
       <div className="idcard__body">

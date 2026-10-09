@@ -27,8 +27,15 @@ export const organizationDefaults = {
   /** Superscript mark after the organisation name. */
   registrationMark: '',
 
-  /** Line beneath the header: registration information. */
-  registrationText: 'रजिस्ट्रेशन संख्या : 29/2024',
+  // ---- header (left / centre / right) ---------------------------------
+  /** Top-left of the header band. */
+  registrationText: 'पंजीकरण सं० : 29/2024',
+
+  /** Top-right of the header band. */
+  founderLabel: 'संस्थापक सत्यापक',
+  founderName: 'मनोज कुमार',
+  founderPhone: 'मो० 9458447100',
+
   /** Optional certification badge. Empty = badge not rendered. */
   isoText: '',
 
@@ -49,13 +56,19 @@ export const organizationDefaults = {
 
   // ---- fixed copy -------------------------------------------------------
   /** Small line under the validity date. */
-  scopeText: 'संस्थापक सत्यापक : मनोज कुमार · मो० 9458447100',
+  scopeText: 'All India',
+
   /** Supporting / objective band above the footer. */
-  supportText: 'गरीब बहन बेटियों की शादी करना व सहायता करना हमारा उद्देश्य',
-  /** Footer band. `\n` renders as a line break. */
+  supportText:
+    'जनकल्याण विश्वास : बाल विवाह, अनाताल विवाह, अनाम विवाह, दहेज प्रथा - 250605',
+
+  /**
+   * Footer band. `\n` renders as a line break.
+   * Head office is Luhara, Aminagar Sarai, Baghpat, Uttar Pradesh 250605.
+   */
   footerText:
-    'कार्यालय निवास : ग्राम कुँहरा, अमीनगर सरिया बागपद उत्तर प्रदेश - 250606\n'
-    + 'कार्यालय : मेरठ बागपत रोड, सिंगावली अहिर नियर बिजलीघर बागपत उत्तर प्रदेश 250606',
+    'पता (मुख्य कार्यालय) : लुहारा, अमीनगर सराया, बागपत, उत्तर प्रदेश - 250605\n'
+    + 'मोबाइल नं. : 9458447100  ·  सहायक : 9997598847',
 
   // ---- ID numbering -----------------------------------------------------
   idPrefix: '',

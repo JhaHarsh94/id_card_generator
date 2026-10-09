@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Upload, Trash2, UserRound, AlertCircle } from 'lucide-react';
 import {
   validateImageFile,
-  readFileAsDataUrl,
-  readImageSize,
   checkImageDimensions,
   IMAGE_RULES,
 } from '../utils/validation';
+import {
+  compressImage, readAsDataUrl, readSize, formatBytes,
+} from '../utils/imageProcessing';
 import { STATUS_OPTIONS, STATUS } from '../utils/status';
 import './MemberForm.css';
 
@@ -30,6 +31,8 @@ export default function MemberForm({
   const inputRef = useRef(null);
   const [photoError, setPhotoError] = useState('');
   const [photoBusy, setPhotoBusy] = useState(false);
+  /** Stored size after compression, so the admin can see the saving. */
+  const [photoSaved, setPhotoSaved] = useState(null);
 
   const set = (key) => (event) => {
     const { value } = event.target;
@@ -45,6 +48,7 @@ export default function MemberForm({
     if (!file) return;
 
     setPhotoError('');
+    setPhotoSaved(null);
 
     const check = validateImageFile(file);
     if (!check.ok) {
@@ -54,8 +58,8 @@ export default function MemberForm({
 
     setPhotoBusy(true);
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const { width, height } = await readImageSize(dataUrl);
+      const raw = await readAsDataUrl(file);
+      const { width, height } = await readSize(raw);
 
       const dims = checkImageDimensions(width, height);
       if (!dims.ok) {
@@ -63,7 +67,12 @@ export default function MemberForm({
         return;
       }
 
+      // Downscale before storing: a raw phone photo is ~1.4 MB as base64 and
+      // localStorage only holds ~5 MB in total.
+      const { dataUrl, bytes } = await compressImage(raw);
+
       onChange({ ...values, photoUrl: dataUrl, photoFile: file });
+      setPhotoSaved(bytes);
     } catch {
       setPhotoError('That photo could not be read. Try a different file.');
     } finally {
@@ -73,6 +82,7 @@ export default function MemberForm({
 
   function clearPhoto() {
     setPhotoError('');
+    setPhotoSaved(null);
     onChange({ ...values, photoUrl: null, photoFile: null });
   }
 
@@ -367,6 +377,11 @@ export default function MemberForm({
 
               {photoErrorText ? (
                 <span className="field-error"><AlertCircle size={13} />{photoErrorText}</span>
+              ) : photoSaved ? (
+                <span className="field-hint">
+                  Photo ready · {formatBytes(photoSaved)} stored (resized
+                  automatically so it still prints sharply).
+                </span>
               ) : null}
             </div>
           </div>

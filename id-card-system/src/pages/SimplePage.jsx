@@ -5,7 +5,8 @@ import {
 } from 'lucide-react';
 import CardStage from '../components/CardStage';
 import { getOrganization, createMember, existingMemberIds } from '../services/localStore';
-import { validateMemberForm, validateImageFile, readFileAsDataUrl, readImageSize, checkImageDimensions } from '../utils/validation';
+import { validateMemberForm, validateImageFile, checkImageDimensions } from '../utils/validation';
+import { compressImage, readAsDataUrl, readSize, formatBytes } from '../utils/imageProcessing';
 import { addMonths, toISODate, today } from '../utils/date';
 import { suggestNextId } from '../utils/idGenerator';
 import { buildVerifyUrl } from '../utils/verification';
@@ -38,6 +39,7 @@ export default function SimplePage() {
 
   const [errors, setErrors] = useState({});
   const [photoError, setPhotoError] = useState('');
+  const [photoSaved, setPhotoSaved] = useState(null);
   const [notice, setNotice] = useState('');
   const [saved, setSaved] = useState(null);
   const [busy, setBusy] = useState('');
@@ -62,15 +64,21 @@ export default function SimplePage() {
     if (!file) return;
 
     setPhotoError('');
+    setPhotoSaved(null);
     const check = validateImageFile(file);
     if (!check.ok) { setPhotoError(check.message); return; }
 
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const { width, height } = await readImageSize(dataUrl);
+      const raw = await readAsDataUrl(file);
+      const { width, height } = await readSize(raw);
       const dims = checkImageDimensions(width, height);
       if (!dims.ok) { setPhotoError(dims.message); return; }
+
+      // Downscale before storing - a raw phone photo is ~1.4 MB as base64 and
+      // localStorage only holds ~5 MB in total.
+      const { dataUrl, bytes } = await compressImage(raw);
       setValues((v) => ({ ...v, photoUrl: dataUrl, photoFile: file }));
+      setPhotoSaved(bytes);
     } catch {
       setPhotoError('That photo could not be read.');
     }
@@ -117,6 +125,7 @@ export default function SimplePage() {
     });
     setErrors({});
     setPhotoError('');
+    setPhotoSaved(null);
     setSaved(null);
     setNotice('');
     setCopied(false);
@@ -286,6 +295,8 @@ export default function SimplePage() {
                     </div>
                     {photoError ? (
                       <span className="field-error"><AlertCircle size={13} />{photoError}</span>
+                    ) : photoSaved ? (
+                      <span className="field-hint">फोटो तैयार · {formatBytes(photoSaved)}</span>
                     ) : (
                       <span className="field-hint">JPG / PNG · 5 MB तक</span>
                     )}

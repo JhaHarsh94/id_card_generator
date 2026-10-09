@@ -123,25 +123,10 @@ export function checkImageDimensions(width, height) {
   return { ok: true };
 }
 
-/** Read a File into a data URL for live preview. */
-export function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('read-failed'));
-    reader.readAsDataURL(file);
-  });
-}
-
-/** Read a File's natural dimensions. */
-export function readImageSize(dataUrl) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = () => reject(new Error('decode-failed'));
-    img.src = dataUrl;
-  });
-}
+/**
+ * Reading, resizing and re-encoding images lives in utils/imageProcessing.js -
+ * this module only owns the validation rules.
+ */
 
 /* ==========================================================================
    Whole-form validation
