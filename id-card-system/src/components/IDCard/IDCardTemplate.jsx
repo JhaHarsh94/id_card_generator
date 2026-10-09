@@ -87,11 +87,6 @@ function IDCardTemplate(
           </div>
         ) : null}
 
-        {/* organisation logo, top-right of the header */}
-        <div className="idcard__logo">
-          {org.logoUrl ? <img src={org.logoUrl} alt="" /> : null}
-        </div>
-
         {/* Registration number now renders inside header-text, beneath the name */}
 
         {/* Certification badge - omitted entirely when the organisation has none */}
@@ -104,6 +99,12 @@ function IDCardTemplate(
 
       {/* ================= BODY ================= */}
       <div className="idcard__body">
+        {/* organisation logo - fixed slot, left side */}
+        <div className="idcard__logo">
+          <span className="idcard__logo-frame" aria-hidden="true" />
+          {org.logoUrl ? <img src={org.logoUrl} alt="" /> : null}
+        </div>
+
         {/* member identity - dynamic */}
         <div className="idcard__identity">
           <div className={`idcard__name ${fit(name, 'size-md', 'size-sm')}`}>

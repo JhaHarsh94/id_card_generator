@@ -65,28 +65,40 @@
 
 .idcard__header-bg { --diag-left: 60%; }
 
-/* ---- logo disc, top-left ---------------------------------------------- */
+/* ---- logo block, left side of the body -------------------------------- */
 
 .idcard__logo {
   position: absolute;
-  left: 20px;
-  top: 12px;
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
+  left: 34px;
+  top: 10px;
+  width: 176px;
+  height: 176px;
+  display: grid;
+  place-items: center;
+  padding: 8px;
   background: var(--c-white);
-  /* the white ring keeps the edge readable over both the blue and red halves */
-  border: 3px solid var(--c-white);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--c-blue-100, #dfe3f4);
   overflow: hidden;
-  z-index: 2;
+}
+
+/* the logo block is itself a blue/red diagonal tile */
+.idcard__logo-frame {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    to bottom right,
+    var(--c-blue) 0%,
+    var(--c-blue) 52%,
+    var(--c-red) 52%,
+    var(--c-red) 100%
+  );
 }
 
 .idcard__logo img {
+  position: relative;
   width: 100%;
   height: 100%;
   object-fit: contain;
-  padding: 4px;
 }
 
 /* ---- English trust name: the single bold, highlighted heading ----------
@@ -96,10 +108,10 @@
 
 .idcard__trust {
   position: absolute;
-  /* starts clear of the logo disc on the left */
-  left: 132px;
-  right: 18px;
-  top: 34px;
+  /* Nothing competes for the header now, so the name uses the full width. */
+  left: 30px;
+  right: 30px;
+  top: 32px;
   z-index: 2;
   text-align: center;
 }
@@ -324,11 +336,15 @@
    the header, so the identity block now spans the full left side.
    -------------------------------------------------------------------------- */
 
+/* ---- identity (dynamic) ------------------------------------------------
+   Offset to clear the logo block on the left.
+   -------------------------------------------------------------------------- */
+
 .idcard__identity {
   position: absolute;
-  left: 40px;
-  top: 16px;
-  width: 542px;
+  left: 224px;
+  top: 20px;
+  width: 356px;
   display: flex;
   flex-direction: column;
   align-items: center;
