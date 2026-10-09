@@ -65,11 +65,11 @@
 
 .idcard__header-bg { --diag-left: 60%; }
 
-/* ---- logo disc, top-right --------------------------------------------- */
+/* ---- logo disc, top-left ---------------------------------------------- */
 
 .idcard__logo {
   position: absolute;
-  right: 22px;
+  left: 20px;
   top: 12px;
   width: 100px;
   height: 100px;
@@ -96,9 +96,10 @@
 
 .idcard__trust {
   position: absolute;
-  left: 30px;
-  right: 30px;
-  top: 44px;
+  /* starts clear of the logo disc on the left */
+  left: 132px;
+  right: 18px;
+  top: 34px;
   z-index: 2;
   text-align: center;
 }
@@ -106,24 +107,29 @@
 .idcard__trust-name {
   display: inline-block;
   color: var(--c-gold);
-  font-size: 27px;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: 0.05em;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: 0.04em;
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
-  /* Shallower 3D: three tight layers rather than six. Kept layered so the gold
-     face still separates cleanly from whichever field colour it crosses. */
+  /*
+   * DUAL-COLOUR 3D: gold face, a red extrusion (the brand accent) stacked over a
+   * navy one. Two colours give the letter real thickness, and the navy layer
+   * keeps the gold face readable where it crosses onto the red diagonal.
+   */
   text-shadow:
     1px 1px 0 var(--c-red-dark),
     2px 2px 0 #7d1018,
     3px 3px 0 var(--c-blue-dark),
-    4px 4px 6px rgba(0, 0, 0, 0.45);
+    4px 4px 0 #0a0f38,
+    5px 5px 0 #070a2c,
+    7px 7px 10px rgba(0, 0, 0, 0.6);
 }
 
-.idcard__trust-name.size-md { font-size: 23px; }
-.idcard__trust-name.size-sm { font-size: 20px; }
+.idcard__trust-name.size-md { font-size: 26px; }
+.idcard__trust-name.size-sm { font-size: 22px; }
 
 .idcard__header-text {
   position: absolute;
@@ -135,8 +141,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* sit under the 3D trust name, clear of the logo disc */
-  padding-top: 52px;
+  /* sits under the 3D trust name */
+  padding-top: 46px;
   text-align: center;
 }
 
