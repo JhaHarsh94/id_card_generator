@@ -129,8 +129,18 @@ def prepare_stamp() -> None:
     lo, hi = 45.0, 110.0
     alpha = np.clip((ink - lo) / (hi - lo), 0, 1) ** 0.9
 
+    # The stamp ink photographs pale on paper and washes out completely when
+    # placed on the card's white area. Deepen it so it reads like fresh ink:
+    # scale each channel down and lift the difference between the channels so
+    # the violet stays violet instead of turning grey.
+    rgb = arr.copy()
+    rgb *= 0.68                                     # deepen
+    spread = rgb.max(axis=2, keepdims=True) - rgb.min(axis=2, keepdims=True)
+    rgb += spread * 0.30                            # re-saturate
+    rgb = np.clip(rgb, 0, 255)
+
     rgba = np.dstack([
-        np.clip(arr, 0, 255).astype(np.uint8),
+        rgb.astype(np.uint8),
         (alpha * 255).astype(np.uint8),
     ])
     out = Image.fromarray(rgba, "RGBA")

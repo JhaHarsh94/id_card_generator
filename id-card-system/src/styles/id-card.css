@@ -59,39 +59,102 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 150px;
+  height: 146px;
   overflow: hidden;
 }
 
-.idcard__header-bg { --diag-left: 60%; }
+/*
+ * Header field: deep blue split diagonally into brand red, with a gold hairline
+ * riding the seam. The original split used a flat 60/40 hard edge which read as
+ * crude, so each half now carries its own gradient and the seam is highlighted -
+ * the blue/red combination stays unmistakable, but finishes like a laminate.
+ */
+.idcard__header-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom right,
+    #2A34A0 0%,
+    #1E2685 58%,
+    #E53C48 58.4%,
+    #BE1523 100%
+  );
+}
 
-/* ---- logo block, left side of the body -------------------------------- */
+/* soft light sweep, for depth */
+.idcard__header-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0) 50%
+  );
+}
+
+/* gold hairline along the diagonal seam */
+.idcard__header-rule {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom right,
+    transparent 0%,
+    transparent 57.2%,
+    rgba(214, 178, 62, 0.85) 57.2%,
+    rgba(214, 178, 62, 0.85) 58.2%,
+    transparent 58.2%,
+    transparent 100%
+  );
+}
+
+/* slim trim along the bottom edge */
+.idcard__header-accent {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  background: linear-gradient(
+    90deg,
+    #1E2685 0%,
+    #2A34A0 40%,
+    #E53C48 100%
+  );
+}
+
+/* ---- logo block, left side of the body ----------------------------------
+   The old blue/red diagonal tile fought with the logo's own red and gold and
+   made the block look busy. A clean plate with a gold hairline reads far more
+   premium and lets the emblem speak.
+   -------------------------------------------------------------------------- */
 
 .idcard__logo {
   position: absolute;
-  left: 30px;
-  top: 16px;
-  width: 176px;
-  height: 176px;
+  left: 24px;
+  top: 10px;
+  width: 196px;
+  /* taller than the photo, so the emblem has room to breathe */
+  height: 224px;
   display: grid;
   place-items: center;
-  padding: 8px;
-  background: var(--c-white);
-  border: 1px solid var(--c-blue-100, #dfe3f4);
+  padding: 12px;
+  background: linear-gradient(160deg, #ffffff 0%, #fafbff 100%);
+  border: 1px solid #d8dced;
+  border-radius: 3px;
   overflow: hidden;
+  /* faint inset lift, like a mounted plate */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 3px rgba(20, 26, 70, 0.08);
 }
 
-/* the logo block is itself a blue/red diagonal tile */
+/* thin gold rule inset from the block edge */
 .idcard__logo-frame {
   position: absolute;
-  inset: 0;
-  background-image: linear-gradient(
-    to bottom right,
-    var(--c-blue) 0%,
-    var(--c-blue) 52%,
-    var(--c-red) 52%,
-    var(--c-red) 100%
-  );
+  inset: 5px;
+  border: 1px solid rgba(197, 158, 45, 0.5);
+  border-radius: 2px;
+  pointer-events: none;
 }
 
 .idcard__logo img {
@@ -118,30 +181,78 @@
 
 .idcard__trust-name {
   display: inline-block;
-  color: var(--c-gold);
-  font-size: 30px;
+  font-size: 40px;
   font-weight: 900;
-  line-height: 1.08;
-  letter-spacing: 0.04em;
+  line-height: 1.04;
+  letter-spacing: 0.015em;
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
-  /*
-   * DUAL-COLOUR 3D: gold face, a red extrusion (the brand accent) stacked over a
-   * navy one. Two colours give the letter real thickness, and the navy layer
-   * keeps the gold face readable where it crosses onto the red diagonal.
-   */
-  text-shadow:
-    1px 1px 0 var(--c-red-dark),
-    2px 2px 0 #7d1018,
-    3px 3px 0 var(--c-blue-dark),
-    4px 4px 0 #0a0f38,
-    5px 5px 0 #070a2c,
-    7px 7px 10px rgba(0, 0, 0, 0.6);
 }
 
-.idcard__trust-name.size-md { font-size: 26px; }
-.idcard__trust-name.size-sm { font-size: 22px; }
+/*
+ * Inverted dual colour. The header is a diagonal split - blue field on the left,
+ * brand red on the right - so each half of the name is coloured with the
+ * OPPOSITE of the field it sits on:
+ *
+ *   text over the BLUE field  ->  RED
+ *   text over the RED  field  ->  BLUE
+ *
+ * Both halves keep a navy outline and glow so they stay legible and heavy.
+ */
+.idcard__trust-part {
+  display: inline-block;
+  /* explicit word gap: the two halves are separate inline blocks, so the
+     browser does not insert one between them */
+  margin-right: 0.28em;
+  -webkit-text-stroke: 2.5px var(--c-blue-dark);
+  paint-order: stroke fill;
+}
+
+.idcard__trust-part--blue { margin-right: 0; }
+
+.idcard__trust-part--red {
+  color: #FF5A63;
+  text-shadow:
+    3px 3px 0 #0b1039,
+    5px 5px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Brighter, with a stronger glow, so the blue half reads as the highlighted
+   half against the red field. */
+.idcard__trust-part--blue {
+  color: #E8EFFF;
+  text-shadow:
+    2px 2px 0 #7D0C17,
+    3px 3px 0 #5C0810,
+    4px 4px 0 #46060C,
+    6px 6px 16px rgba(255, 255, 255, 0.35),
+    7px 7px 20px rgba(0, 0, 0, 0.5);
+}
+
+.idcard__trust-name.size-md { font-size: 33px; }
+.idcard__trust-name.size-sm { font-size: 28px; }
+
+/*
+ * The name + registration are laid out as one vertically-centred group so the
+ * name's optical centre lands on the diagonal seam, i.e. squarely between the
+ * blue and red halves rather than sitting inside one of them.
+ */
+.idcard__header-text {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  /* leave the top corners clear for the registration / ID blocks */
+  padding: 0 130px 6px;
+  text-align: center;
+}
 
 .idcard__header-text {
   position: absolute;
@@ -184,20 +295,51 @@
 
 /* ---- registration number, centred under the organisation name --------- */
 
-.idcard__registration {
-  margin-top: 7px;
-  color: var(--c-white);
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  line-height: 1.1;
-  text-align: center;
-  /* sits across the diagonal boundary, so it needs its own contrast */
+/* ---- corner blocks --------------------------------------------------------
+   Registration (left) and member ID (right) sit in the header's top corners,
+   clear of the centred trust name. Each is a small stacked pair: a light label
+   above a heavy value, which keeps the two corners visually balanced.
+   -------------------------------------------------------------------------- */
+
+.idcard__corner {
+  position: absolute;
+  top: 12px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.12;
+  color: #FFFFFF;
+  /* the left corner sits on blue, the right one on red - both need the shadow */
   text-shadow:
-    0 1px 0 var(--c-blue-dark),
-    1px 0 0 var(--c-blue-dark),
-    -1px 0 0 var(--c-blue-dark),
-    0 2px 5px rgba(0, 0, 0, 0.5);
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 0 5px rgba(0, 0, 0, 0.35);
+}
+
+.idcard__corner--left {
+  left: 18px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.idcard__corner--right {
+  right: 18px;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.idcard__corner-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.idcard__corner-value {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .idcard__header-side-label {
@@ -324,11 +466,48 @@
 
 .idcard__body {
   position: absolute;
-  top: 150px;
+  top: 146px;
   left: 0;
   right: 0;
-  height: 282px;
-  background: var(--c-white);
+  height: 286px;
+  /*
+   * Flat white read as an empty box on a printed card. A very light cool
+   * gradient plus a faint 45-degree guilloche-style pinstripe gives the panel
+   * the texture of security stationery without ever competing with the text.
+   */
+  background: linear-gradient(158deg, #FFFFFF 0%, #FCFDFF 48%, #F3F6FC 100%);
+}
+
+.idcard__body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(23, 31, 115, 0.025) 0px,
+    rgba(23, 31, 115, 0.025) 1px,
+    transparent 1px,
+    transparent 10px
+  );
+  pointer-events: none;
+}
+
+/* soft warm glow behind the logo, echoing the emblem's red/gold */
+.idcard__body::after {
+  content: '';
+  position: absolute;
+  left: -70px;
+  top: -60px;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(214, 178, 62, 0.13) 0%,
+    rgba(229, 60, 72, 0.05) 45%,
+    rgba(255, 255, 255, 0) 72%
+  );
+  pointer-events: none;
 }
 
 /* ---- identity (dynamic) ------------------------------------------------
@@ -342,8 +521,8 @@
 
 .idcard__identity {
   position: absolute;
-  left: 208px;
-  top: 40px;
+  left: 232px;
+  top: 34px;
   width: 380px;
   display: flex;
   flex-direction: column;
@@ -353,22 +532,22 @@
 
 .idcard__name {
   color: var(--c-blue);
-  font-size: 44px;
-  font-weight: 800;
+  font-size: 45px;
+  font-weight: 900;
   line-height: 1.06;
   letter-spacing: -0.5px;
   max-width: 100%;
   overflow-wrap: break-word;
 }
 
-.idcard__name.size-md { font-size: 37px; }
-.idcard__name.size-sm { font-size: 31px; }
+.idcard__name.size-md { font-size: 38px; }
+.idcard__name.size-sm { font-size: 32px; }
 
 .idcard__designation {
   margin-top: 14px;
   color: var(--c-red);
   font-size: 30px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.15;
   max-width: 100%;
   overflow-wrap: break-word;
@@ -379,35 +558,47 @@
 
 .idcard__state {
   margin-top: 8px;
-  color: var(--c-red);
-  font-size: 30px;
-  font-weight: 700;
+  color: var(--c-blue);
+  font-size: 27px;
+  font-weight: 800;
   line-height: 1.15;
   max-width: 100%;
   overflow-wrap: break-word;
 }
 
-.idcard__state.size-md { font-size: 26px; }
-.idcard__state.size-sm { font-size: 22px; }
+.idcard__state.size-md { font-size: 24px; }
+.idcard__state.size-sm { font-size: 21px; }
 
 .idcard__validity {
   margin-top: 14px;
   color: var(--c-blue);
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.1;
   white-space: nowrap;
 }
 
 .idcard__validity em { font-style: normal; font-weight: 700; }
 
+/* ---- scope chip ----------------------------------------------------------
+   "All India" used to sit loose under the validity line and read as an
+   afterthought. A hairline chip makes it an intentional field.
+   -------------------------------------------------------------------------- */
+
 .idcard__scope {
-  margin-top: 9px;
+  margin-top: 12px;
+  display: inline-block;
+  padding: 3px 12px 4px;
+  border: 1px solid rgba(197, 158, 45, 0.65);
+  border-radius: 999px;
+  background: rgba(23, 31, 115, 0.04);
   color: var(--c-blue);
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1.2;
   max-width: 100%;
-  overflow-wrap: break-word;
 }
 
 /* ---- member ID number (dynamic, fixed position) ------------------------ */
@@ -431,15 +622,23 @@
 
 /* ---- member photo (never stretched) ------------------------------------ */
 
+/* ---- member photo --------------------------------------------------------
+   A 6px saturated red frame was the loudest element on the card. A navy frame
+   with a gold hairline ties the photo to the header instead of fighting it.
+   -------------------------------------------------------------------------- */
+
 .idcard__photo {
   position: absolute;
-  left: 632px;
-  top: 8px;
-  width: 190px;
-  height: 154px;
+  left: 640px;
+  top: 6px;
+  /* square, matching the logo block exactly */
+  width: 196px;
+  height: 196px;
   overflow: hidden;
-  border: 6px solid var(--c-red);
-  background: var(--c-red-50, #fdeef0);
+  /* brand red frame, tying the photo to the header's red half */
+  border: 3px solid var(--c-red-dark);
+  background: var(--brand-blue-100, #e6e9f7);
+  box-shadow: 0 0 0 1px rgba(214, 178, 62, 0.6);
 }
 
 .idcard__photo img {
@@ -454,18 +653,18 @@
   height: 100%;
   display: grid;
   place-items: center;
-  color: rgba(23, 31, 115, 0.35);
-  background: linear-gradient(135deg, #eef1fb 0%, #e2e7f7 100%);
+  color: rgba(23, 31, 115, 0.3);
+  background: linear-gradient(150deg, #f2f4fb 0%, #e4e8f6 100%);
 }
 
 /* ---- QR ---------------------------------------------------------------- */
 
 .idcard__qr {
   position: absolute;
-  left: 626px;
-  top: 190px;
-  width: 64px;
-  height: 64px;
+  left: 640px;
+  top: 212px;
+  width: 58px;
+  height: 58px;
   padding: 3px;
   background: var(--c-white);
   border: 1px solid var(--c-blue);
@@ -482,9 +681,9 @@
 
 .idcard__qr-label {
   position: absolute;
-  left: 614px;
-  top: 258px;
-  width: 90px;
+  left: 626px;
+  top: 272px;
+  width: 86px;
   text-align: center;
   color: var(--c-blue);
   font-size: 8px;
@@ -499,12 +698,14 @@
    620x505 aspect ratio.
    -------------------------------------------------------------------------- */
 
+/* Photo runs 6-202. The stamp is anchored to the photo's LOWER-left corner,
+   which is where the organisation places it on its printed proofs. */
 .idcard__seal {
   position: absolute;
   left: 572px;
-  top: 72px;
-  width: 106px;
-  height: 86px;
+  top: 106px;
+  width: 118px;
+  height: 96px;
   display: grid;
   place-items: center;
   pointer-events: none;
@@ -536,9 +737,9 @@
 
 .idcard__signatory {
   position: absolute;
-  left: 704px;
-  top: 196px;
-  width: 118px;
+  left: 706px;
+  top: 216px;
+  width: 130px;
   text-align: right;
 }
 
@@ -569,25 +770,34 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 30px;
+  padding: 0 26px;
   background: var(--c-white);
-  border-top: 3px solid var(--c-red);
 }
 
+/*
+ * Navy pill with white text - the same treatment the organisation uses for this
+ * line on its printed proofs, so the card and the paperwork match.
+ */
 .idcard__support-text {
-  color: var(--c-red);
-  font-size: 24px;
+  display: inline-block;
+  max-width: 100%;
+  padding: 6px 22px 7px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2A34A0 0%, #1B2378 100%);
+  color: #FFFFFF;
+  font-size: 16px;
   font-weight: 800;
   text-align: center;
-  line-height: 1.15;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 3px rgba(20, 26, 70, 0.28);
 }
 
-.idcard__support-text.size-md { font-size: 19px; }
-.idcard__support-text.size-sm { font-size: 16px; }
+.idcard__support-text.size-md { font-size: 14px; }
+.idcard__support-text.size-sm { font-size: 12.5px; }
 
 /* ==========================================================================
    FOOTER  (90% - 100%)
@@ -599,31 +809,23 @@
   left: 0;
   right: 0;
   height: 54px;
-  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 0 26px;
+  /* White with a navy rule, as on the printed proofs. A solid navy footer would
+     merge into the navy pill above it. */
+  background: var(--c-white);
+  border-top: 2px solid var(--c-blue);
 }
 
-/* Two address lines: the first is full width, the second sits on the blue half
-   where the red diagonal has not reached, so it needs no extra contrast. */
 .idcard__footer-text {
-  white-space: pre-line;
-}
-
-.idcard__footer-bg { --diag-left: 82%; }
-
-.idcard__footer-text {
-  position: relative;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 20px;
-  color: var(--c-white);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.3;
+  color: var(--c-blue);
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.45;
   text-align: center;
   white-space: pre-line; /* honours \n in the organisation's address block */
-  text-shadow: 0 1px 2px rgba(18, 26, 95, 0.5);
+  letter-spacing: 0.005em;
 }
 
 /* ==========================================================================

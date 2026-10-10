@@ -31,7 +31,9 @@ export const organizationDefaults = {
 
   // ---- header (left / centre / right) ---------------------------------
   /** Top-left of the header band. */
-  registrationText: 'पंजीकरण सं० : 29/2024',
+  registrationText: 'पंजीकरण सं०',
+  /** The number itself, shown under the label in the top-left corner. */
+  registrationValue: '29/2024',
 
   /**
    * English trust name, shown in 3D beside the logo at the top-right.

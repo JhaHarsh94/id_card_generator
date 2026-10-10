@@ -26,6 +26,39 @@ function fit(text, md, sm) {
   return '';
 }
 
+/**
+ * Split the trust name into two halves for the inverted colour treatment.
+ *
+ * The header is split diagonally: blue on the left, red on the right. The name
+ * therefore straddles both, so its halves are coloured oppositely - the half
+ * sitting on blue is red, the half sitting on red is blue.
+ *
+ * The split falls on the word boundary nearest the middle, so no word is cut.
+ */
+function splitTrustName(text) {
+  const clean = String(text ?? '').trim();
+  if (!clean) return ['', ''];
+
+  const words = clean.split(/\s+/);
+  const total = clean.replace(/\s+/g, '').length;
+  if (words.length < 2) return [clean, ''];
+
+  let running = 0;
+  let bestIndex = 1;
+  let bestDelta = Infinity;
+
+  for (let i = 1; i < words.length; i += 1) {
+    running += words[i - 1].replace(/\s+/g, '').length;
+    const delta = Math.abs(running - total / 2);
+    if (delta < bestDelta) {
+      bestDelta = delta;
+      bestIndex = i;
+    }
+  }
+
+  return [words.slice(0, bestIndex).join(' '), words.slice(bestIndex).join(' ')];
+}
+
 function IDCardTemplate(
   { organization, member, verifyUrl = null, className = '', showDemoFlag = true },
   ref,
@@ -69,25 +102,45 @@ function IDCardTemplate(
 
       {/* ================= HEADER (fixed) ================= */}
       <header className="idcard__header">
-        <div className="idcard__header-bg idcard__diagonal" />
+        <div className="idcard__header-bg" />
+        <div className="idcard__header-accent" aria-hidden="true" />
+        <div className="idcard__header-rule" aria-hidden="true" />
 
         <div className="idcard__header-text">
-          {/* Registration number, centred directly beneath the 3D trust name */}
-          {org.registrationText ? (
-            <div className="idcard__registration">{org.registrationText}</div>
+          {/* English trust name in 3D, centred on the blue/red diagonal seam */}
+          {org.trustNameEn ? (
+            <div className={`idcard__trust-name ${fit(org.trustNameEn, 'size-md', 'size-sm')}`}>
+              {(() => {
+                const [onBlue, onRed] = splitTrustName(org.trustNameEn);
+                return (
+                  <>
+                    <span className="idcard__trust-part idcard__trust-part--red">{onBlue}</span>
+                    {onRed ? (
+                      <span className="idcard__trust-part idcard__trust-part--blue">{onRed}</span>
+                    ) : null}
+                  </>
+                );
+              })()}
+            </div>
           ) : null}
         </div>
 
-        {/* English trust name in 3D, beside the logo */}
-        {org.trustNameEn ? (
-          <div className="idcard__trust">
-            <div className={`idcard__trust-name ${fit(org.trustNameEn, 'size-md', 'size-sm')}`}>
-              {org.trustNameEn}
-            </div>
+        {/* Registration number, top-left corner */}
+        {org.registrationText ? (
+          <div className="idcard__corner idcard__corner--left">
+            <span className="idcard__corner-label">पंजीकरण सं०</span>
+            <span className="idcard__corner-value">{org.registrationValue ?? org.registrationText}</span>
           </div>
         ) : null}
 
-        {/* Registration number now renders inside header-text, beneath the name */}
+        {/* Member ID number, top-right corner */}
+        <div className="idcard__corner idcard__corner--right">
+          <span className="idcard__corner-label">ID No.</span>
+          <span className="idcard__corner-value">{memberId || '—'}</span>
+        </div>
+
+        {/* Trust name + registration both render inside header-text, as a single
+            centred group sitting on the blue/red seam. */}
 
         {/* Certification badge - omitted entirely when the organisation has none */}
         {org.isoText ? (
@@ -129,9 +182,6 @@ function IDCardTemplate(
 
           {org.scopeText ? <div className="idcard__scope">{org.scopeText}</div> : null}
         </div>
-
-        {/* member ID number - dynamic, fixed position */}
-        <div className="idcard__idno">ID No.{memberId || '—'}</div>
 
         {/* member photo - dynamic, never stretched */}
         <div className="idcard__photo">
@@ -185,7 +235,6 @@ function IDCardTemplate(
 
       {/* ================= FOOTER (fixed) ================= */}
       <footer className="idcard__footer">
-        <div className="idcard__footer-bg idcard__diagonal" />
         <div className="idcard__footer-text">{org.footerText ?? ''}</div>
       </footer>
     </div>
