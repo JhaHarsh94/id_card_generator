@@ -82,11 +82,11 @@ export const organizationDefaults = {
    * Footer band. `\n` renders as a line break.
    * The state authority line is not here any more - it sits in the header
    * between the two numbers (see authorityText).
-   * Head office: ग्राम लुहारा, अमीनगर सराय, बागपत, उत्तर प्रदेश 250606.
+   * Head office: मेरठ बागपत रोड बालैनी, बागपत, उत्तर प्रदेश 250626.
    * Contact numbers are listed exactly as supplied by the organisation.
    */
   footerText:
-    'निवास कार्यालय :- ग्राम लुहारा अमीनगर सराय बागपत उत्तर प्रदेश 250606\n'
+    'निवास कार्यालय :- मेरठ बागपत रोड बालैनी बागपत उत्तर प्रदेश 250626\n'
     + 'संपर्क सूत्र : 9458447100, 9557502151, 9457396300',
 
   // ---- ID numbering -----------------------------------------------------

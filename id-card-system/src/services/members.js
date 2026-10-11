@@ -264,19 +264,31 @@ function applyOrganizationRow(row) {
 }
 
 /**
+ * Seed value for the cache.
+ *
+ * With Supabase live, the DATABASE is the source of truth, so the cache starts
+ * from the shipped defaults rather than from localStorage. Reading localStorage
+ * here re-introduced a stale `isDemo: true` left by an early development
+ * session, which put a DEMO DATA watermark on real cards.
+ *
+ * With no backend, localStorage is all there is, so it is used.
+ */
+const seedOrganization = () => (supabaseConfigured ? organizationDefaults : localGetOrganization());
+
+/**
  * Cached organisation settings.
  *
- * Seeded from localStore so that reading is meaningful before any network call
- * completes - a login page that renders the trust's name cannot afford to wait
- * for a round trip. `hydrateStores()` replaces it with the database row as soon
- * as that arrives.
+ * Seeded so that reading is meaningful before any network call completes - a
+ * login page that renders the trust's name cannot afford to wait for a round
+ * trip. `hydrateStores()` replaces it with the database row as soon as that
+ * arrives.
  *
  * This is why getOrganization() stays SYNCHRONOUS even when Supabase is live.
  * It is called from render paths in thirteen places; making it async would mean
  * rewriting every one of them and, worse, would make the card flash empty on
  * every load. A synchronous read of a warmed cache is the cheaper trade.
  */
-let orgCache = localGetOrganization();
+let orgCache = seedOrganization();
 
 /** Member numbers already issued. Same caching rationale as orgCache. */
 let idsCache = localExistingMemberIds();

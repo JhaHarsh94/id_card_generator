@@ -542,11 +542,9 @@
   top: 170px;
   left: 0;
   right: 0;
-  /* Runs all the way to the footer's top edge (476px).
-     It used to stop at 432px with the support band filling 432-476; that band
-     has been removed, so the white panel claims its space instead of leaving a
-     gap above the footer. */
-  height: 306px;
+  /* Runs to the footer's top edge. The footer is 74px, so 170 + 296 = 466,
+     which is exactly where the footer begins. */
+  height: 296px;
   /*
    * Flat white read as an empty box on a printed card. A very light cool
    * gradient plus a faint 45-degree guilloche-style pinstripe gives the panel
@@ -940,11 +938,12 @@
   bottom: 0;
   left: 0;
   right: 0;
-  /* taller: the footer now carries the state authority line as well */
-  height: 64px;
+  /* 64 -> 74px to fit the larger 17px address and contact lines without
+     clipping the descenders of the Devanagari below the baseline */
+  height: 74px;
   display: grid;
   place-items: center;
-  padding: 0 26px;
+  padding: 0 40px;
   overflow: hidden;
   background: linear-gradient(
     to bottom right,
@@ -973,16 +972,17 @@
 /* text sits above the decorative layer */
 /*
  * Both footer lines carry the address and the contact numbers - the two things
- * a holder of the card actually needs - so they are set at weight 900 rather
- * than the earlier 700, which read as small print on the blue/red gradient.
+ * a holder of the card actually needs - so they are set large and at weight
+ * 900. The lines are short and the band is wide, so there was room to grow from
+ * the earlier 14px/700, which read as fine print against the blue/red gradient.
  */
 .idcard__footer-text {
   position: relative;
   z-index: 1;
   color: #FFFFFF;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 900;
-  line-height: 1.5;
+  line-height: 1.45;
   text-align: center;
   white-space: pre-line; /* honours \n in the organisation's address block */
   letter-spacing: 0.005em;
