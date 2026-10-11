@@ -5,7 +5,7 @@ import {
   Eye, EyeOff, LogIn, IdCard, QrCode, Printer,
 } from 'lucide-react';
 import { useAuth } from '../context/auth-context';
-import { getOrganization } from '../services/localStore';
+import { getOrganization } from '../services/members';
 import { demoCredential, usingSupabase } from '../services/auth';
 import '../styles/auth.css';
 

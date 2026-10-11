@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Save, RotateCcw, Building2, Hash, QrCode, CheckCircle2, AlertCircle, Upload, Trash2 } from 'lucide-react';
-import { getOrganization, saveOrganization, resetOrganization, listMembers } from '../services/localStore';
+import { getOrganization, saveOrganization, resetOrganization, listMembers } from '../services/members';
 import { suggestNextId } from '../utils/idGenerator';
 import CardStage from '../components/CardStage';
 import '../styles/settings.css';

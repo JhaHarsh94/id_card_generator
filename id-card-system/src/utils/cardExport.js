@@ -28,8 +28,16 @@ export async function cardToPngDataUrl(node) {
       // 856 * 2.5 = 2140px wide, comfortably above 300 DPI for CR80.
       pixelRatio: EXPORT_SCALE,
       cacheBust: true,
-      // Cards use background gradients; the browser cache must not serve a
-      // stale, pre-fix stylesheet into the export.
+      /*
+       * Web fonts MUST stay embedded.
+       *
+       * Skipping them (`skipFonts: true`) silences a harmless SecurityError
+       * about the cross-origin Google Fonts stylesheet - but the exported SVG
+       * then renders Devanagari with a wider fallback face, the member name
+       * wraps onto a second line, and consecutive lines collide. Measured, not
+       * assumed: with embedding the name renders on one line; without it, it
+       * overlaps the designation.
+       */
       skipFonts: false,
       backgroundColor: '#FFFFFF',
     });
@@ -81,16 +89,15 @@ export async function downloadCardPdf(node, member) {
     compress: true,
   });
 
-  // 0.5mm bleed on each side absorbs printer edge and rounding error.
-  const bleed = 0.5;
-  doc.addImage(
-    dataUrl,
-    'PNG',
-    -bleed,
-    -bleed,
-    CARD.widthMM + bleed * 2,
-    CARD.heightMM + bleed * 2,
-  );
+  /*
+   * The image is placed at the page origin, sized exactly to the page.
+   *
+   * An earlier version bled it 0.5mm past each edge to absorb printer
+   * rounding. That pushed content outside the MediaBox, where a PDF viewer
+   * silently clips it - which is how the bottom of the card (the footer
+   * address block) disappeared. No bleed means no clipping.
+   */
+  doc.addImage(dataUrl, 'PNG', 0, 0, CARD.widthMM, CARD.heightMM);
 
   doc.save(safeFilename(member, 'pdf'));
 }
@@ -121,7 +128,20 @@ export async function printCard(node, member, { organization } = {}) {
     <style>
       @page { size: ${CARD.widthMM}mm ${CARD.heightMM}mm; margin: 0; }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: ${CARD.widthMM}mm; height: ${CARD.heightMM}mm; }
+      /*
+       * The image is deliberately a fraction under the full page height.
+       * At exactly 53.98mm a sub-pixel rounding overflows the page, the
+       * browser paginates, and the bottom strip of the card is pushed onto a
+       * second sheet. The 0.6mm shortfall costs nothing visually and keeps
+       * the whole card - including the footer - on one page.
+       */
+      html, body {
+        width: ${CARD.widthMM}mm;
+        height: ${CARD.heightMM}mm;
+        overflow: hidden;
+        page-break-after: avoid;
+        break-after: avoid;
+      }
       body {
         display: grid;
         place-items: center;
@@ -131,12 +151,12 @@ export async function printCard(node, member, { organization } = {}) {
       }
       img {
         display: block;
-        width: ${CARD.widthMM}mm;
-        height: ${CARD.heightMM}mm;
+        width: ${(CARD.widthMM - 0.2).toFixed(2)}mm;
+        height: ${(CARD.heightMM - 0.6).toFixed(2)}mm;
         object-fit: fill;
       }
       @media screen {
-        body { padding: 24px; background: #eceef4; }
+        body { padding: 24px; background: #eceef4; overflow: auto; height: auto; }
         img { box-shadow: 0 10px 30px rgba(0,0,0,.25); }
       }
     </style>

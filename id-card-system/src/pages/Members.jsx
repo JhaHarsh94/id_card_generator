@@ -12,7 +12,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
-import { listMembers } from '../services/localStore';
+import { listMembers } from '../services/members';
 import { deriveStatus, summarise, STATUS } from '../utils/status';
 import { formatDate, formatDateLong } from '../utils/date';
 

@@ -5,16 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#3B2A8C" />
     <!--
-      Devanagari webfont. Progressive enhancement only: the card also declares
-      a local Devanagari fallback stack, so it renders correctly offline or if
-      this request is blocked.
+      Devanagari webfont is SELF-HOSTED from /public/fonts (see src/styles/fonts.css).
+      Self-hosting is deliberate: html-to-image must be able to read and embed the
+      @font-face rules when exporting a card, and it cannot read a cross-origin
+      stylesheet. With the Google Fonts CDN the exported PNG silently fell back
+      to a wider system face, which made long member names wrap and collide.
     -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700;800&display=swap"
-      rel="stylesheet"
-    />
     <meta
       name="description"
       content="Digital ID card management and QR verification system."

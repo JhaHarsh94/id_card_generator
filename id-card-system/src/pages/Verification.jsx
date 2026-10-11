@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ScanLine, Search, ExternalLink, ShieldCheck } from 'lucide-react';
-import { getMember, listMembers, getOrganization } from '../services/localStore';
+import { getMember, listMembers, getOrganization } from '../services/members';
 import { deriveStatus } from '../utils/status';
 import { formatDate } from '../utils/date';
 import StatusBadge from '../components/StatusBadge';

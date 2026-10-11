@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import CardStage from '../components/CardStage';
 import StatusBadge from '../components/StatusBadge';
-import { getMember, renewMember, revokeMember, getOrganization } from '../services/localStore';
+import { getMember, renewMember, revokeMember, getOrganization } from '../services/members';
 import { deriveStatus, STATUS } from '../utils/status';
 import { addMonths, formatDate, formatDateLong, describeValidity, toISODate, today } from '../utils/date';
 import { downloadCardPdf, downloadCardPng, printCard } from '../utils/cardExport';

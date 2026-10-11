@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { summarise, STATUS } from '../utils/status';
-import { getOrganization, listMembers } from '../services/localStore';
+import { getOrganization, listMembers } from '../services/members';
 import { useAuth } from '../context/auth-context';
 import '../styles/dashboard.css';
 

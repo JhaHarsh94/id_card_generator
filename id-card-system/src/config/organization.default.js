@@ -42,6 +42,16 @@ export const organizationDefaults = {
    */
   trustNameEn: 'PUNAM KABIRA SARV DHARAM SAHAYATA TRUST',
 
+  /**
+   * State authority, shown in the header between the registration number and the
+   * member ID number.
+   *
+   * It began in the footer, was briefly tried under the trust name, and settled
+   * here: sitting between the two numbers it reads as the body that issued both.
+   * Empty = not rendered.
+   */
+  authorityText: 'Government of Uttar Pradesh',
+
   /** Optional certification badge. Empty = badge not rendered. */
   isoText: '',
 
@@ -70,11 +80,14 @@ export const organizationDefaults = {
 
   /**
    * Footer band. `\n` renders as a line break.
-   * Head office is Luhara, Aminagar Sarai, Baghpat, Uttar Pradesh 250605.
+   * The state authority line is not here any more - it sits in the header
+   * between the two numbers (see authorityText).
+   * Head office: ग्राम लुहारा, अमीनगर सराय, बागपत, उत्तर प्रदेश 250606.
+   * Contact numbers are listed exactly as supplied by the organisation.
    */
   footerText:
-    'पता (मुख्य कार्यालय) : लुहारा, अमीनगर सराया, बागपत, उत्तर प्रदेश - 250605\n'
-    + 'मोबाइल नं. : 9458447100  ·  सहायक : 9997598847',
+    'निवास कार्यालय :- ग्राम लुहारा अमीनगर सराय बागपत उत्तर प्रदेश 250606\n'
+    + 'संपर्क सूत्र : 9458447100, 9557502151, 9457396300',
 
   // ---- ID numbering -----------------------------------------------------
   idPrefix: '',

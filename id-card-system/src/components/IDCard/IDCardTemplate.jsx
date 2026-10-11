@@ -1,4 +1,12 @@
-import { forwardRef, useMemo } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { COLORS } from '../../config/cardDesign';
 import { formatDate } from '../../utils/date';
 import { buildVerifyUrl } from '../../utils/verification';
@@ -27,37 +35,81 @@ function fit(text, md, sm) {
 }
 
 /**
- * Split the trust name into two halves for the inverted colour treatment.
+ * Shrink a single-line heading until it fits the width available to it.
  *
- * The header is split diagonally: blue on the left, red on the right. The name
- * therefore straddles both, so its halves are coloured oppositely - the half
- * sitting on blue is red, the half sitting on red is blue.
+ * Character counts are the wrong tool for this. The trust name is a fixed
+ * string whose rendered width depends on which font actually loaded - the
+ * width shifted by ~7% when the self-hosted Noto replaced the Nirmala UI
+ * fallback, which was enough to clip the final letter. Measuring the rendered
+ * box is the only version of this that stays correct across font swaps,
+ * unicode-range coverage and browser zoom.
  *
- * The split falls on the word boundary nearest the middle, so no word is cut.
+ * Returns the font size in px to apply, and re-measures when webfonts settle,
+ * since the first paint measures against a fallback face.
  */
-function splitTrustName(text) {
-  const clean = String(text ?? '').trim();
-  if (!clean) return ['', ''];
+function useFittedFontSize(ref, { max, min }) {
+  const [px, setPx] = useState(max);
 
-  const words = clean.split(/\s+/);
-  const total = clean.replace(/\s+/g, '').length;
-  if (words.length < 2) return [clean, ''];
+  const measure = useCallback(() => {
+    const el = ref.current;
+    const host = el?.parentElement;
+    if (!el || !host) return;
 
-  let running = 0;
-  let bestIndex = 1;
-  let bestDelta = Infinity;
+    const hostStyle = getComputedStyle(host);
+    const available =
+      host.clientWidth
+      - parseFloat(hostStyle.paddingLeft || '0')
+      - parseFloat(hostStyle.paddingRight || '0');
+    if (available <= 0) return;
 
-  for (let i = 1; i < words.length; i += 1) {
-    running += words[i - 1].replace(/\s+/g, '').length;
-    const delta = Math.abs(running - total / 2);
-    if (delta < bestDelta) {
-      bestDelta = delta;
-      bestIndex = i;
+    // Measure at the ceiling size so the ratio is taken from a known baseline
+    // rather than compounding across successive re-renders.
+    el.style.fontSize = `${max}px`;
+    const natural = el.scrollWidth;
+    if (natural <= available) {
+      setPx(max);
+      return;
     }
-  }
 
-  return [words.slice(0, bestIndex).join(' '), words.slice(bestIndex).join(' ')];
+    setPx(Math.max(min, Math.floor(max * (available / natural))));
+  }, [ref, max, min]);
+
+  useLayoutEffect(() => {
+    measure();
+  }, [measure]);
+
+  useEffect(() => {
+    // A fallback face measures differently from the real one. Re-run once the
+    // webfonts have loaded, otherwise the first measurement is kept and the
+    // heading stays the wrong size.
+    let cancelled = false;
+    const rerun = () => { if (!cancelled) measure(); };
+
+    if (document.fonts?.status === 'loaded') {
+      rerun();
+    } else {
+      document.fonts?.ready.then(rerun).catch(() => {});
+    }
+
+    window.addEventListener('resize', rerun);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('resize', rerun);
+    };
+  }, [measure]);
+
+  return px;
 }
+
+/**
+ * splitTrustName() used to cut the trust name on the word boundary nearest the
+ * middle, so each half could take the colour opposite the background beneath it.
+ * The name is now a single gold colour, so there is nothing to split - the
+ * helper and its markup are both gone.
+ *
+ * Kept here as a note rather than deleted silently: if the design ever goes
+ * back to the two-colour treatment, this is what has to come back with it.
+ */
 
 function IDCardTemplate(
   { organization, member, verifyUrl = null, className = '', showDemoFlag = true },
@@ -65,6 +117,11 @@ function IDCardTemplate(
 ) {
   const org = organization ?? {};
   const m = member ?? {};
+
+  // The trust name is the widest fixed element on the card and must never
+  // clip, so its size is measured rather than guessed from its length.
+  const trustNameRef = useRef(null);
+  const trustNamePx = useFittedFontSize(trustNameRef, { max: 54, min: 22 });
 
   const {
     name = '',
@@ -107,20 +164,20 @@ function IDCardTemplate(
         <div className="idcard__header-rule" aria-hidden="true" />
 
         <div className="idcard__header-text">
-          {/* English trust name in 3D, centred on the blue/red diagonal seam */}
+          {/* English trust name, single gold colour with a deep extrusion.
+              It was previously split into two colours (red over the blue half,
+              white over the red half) to invert against the background. The
+              client preferred one solid colour, so the split was dropped and
+              gold chosen: it is the only hue that holds its contrast against
+              BOTH the blue and the red half of the header, and it already
+              appears in the emblem and the corner rules. */}
           {org.trustNameEn ? (
-            <div className={`idcard__trust-name ${fit(org.trustNameEn, 'size-md', 'size-sm')}`}>
-              {(() => {
-                const [onBlue, onRed] = splitTrustName(org.trustNameEn);
-                return (
-                  <>
-                    <span className="idcard__trust-part idcard__trust-part--red">{onBlue}</span>
-                    {onRed ? (
-                      <span className="idcard__trust-part idcard__trust-part--blue">{onRed}</span>
-                    ) : null}
-                  </>
-                );
-              })()}
+            <div
+              ref={trustNameRef}
+              className="idcard__trust-name"
+              style={{ fontSize: `${trustNamePx}px` }}
+            >
+              {org.trustNameEn}
             </div>
           ) : null}
         </div>
@@ -139,8 +196,14 @@ function IDCardTemplate(
           <span className="idcard__corner-value">{memberId || '—'}</span>
         </div>
 
-        {/* Trust name + registration both render inside header-text, as a single
-            centred group sitting on the blue/red seam. */}
+        {/* State authority, centred in the gap the two corner blocks leave
+            between them. It reads as the issuing authority for both numbers -
+            which is what it factually is - rather than as a third data field.
+            This used to be the first line of the footer; the client moved it
+            up here. */}
+        {org.authorityText ? (
+          <div className="idcard__authority">{org.authorityText}</div>
+        ) : null}
 
         {/* Certification badge - omitted entirely when the organisation has none */}
         {org.isoText ? (
@@ -226,12 +289,14 @@ function IDCardTemplate(
         </div>
       </div>
 
-      {/* ================= SUPPORT / OBJECTIVE BAND (fixed) ================= */}
-      <div className="idcard__support">
-        <div className={`idcard__support-text ${fit(org.supportText, 'size-md', 'size-sm')}`}>
-          {org.supportText ?? ''}
-        </div>
-      </div>
+      {/*
+        The support / objective band (जनकल्याण विश्वास …) sat here as a navy pill
+        directly below the ALL INDIA pill. The client asked for that line to go,
+        so the band is no longer rendered. `org.supportText` is deliberately left
+        in the config - emptying the field in Settings is enough to bring it
+        back, and the band is where the space it used to occupy is reclaimed
+        (the body below was extended to match).
+      */}
 
       {/* ================= FOOTER (fixed) ================= */}
       <footer className="idcard__footer">

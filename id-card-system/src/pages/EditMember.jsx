@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, IdCard, AlertCircle } from 'lucide-react';
 import MemberForm from '../components/MemberForm';
 import CardStage from '../components/CardStage';
-import { getMember, updateMember, getOrganization, existingMemberIds } from '../services/localStore';
+import { getMember, updateMember, getOrganization, existingMemberIds } from '../services/members';
 import { validateMemberForm } from '../utils/validation';
 import { toISODate } from '../utils/date';
 import { buildVerifyUrl } from '../utils/verification';

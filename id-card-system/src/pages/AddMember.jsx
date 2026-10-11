@@ -8,7 +8,7 @@ import { validateMemberForm } from '../utils/validation';
 import { addMonths, toISODate, today } from '../utils/date';
 import { suggestNextId } from '../utils/idGenerator';
 import { buildVerifyUrl } from '../utils/verification';
-import { createMember, existingMemberIds } from '../services/localStore';
+import { createMember, existingMemberIds } from '../services/members';
 
 /**
  * AddMember

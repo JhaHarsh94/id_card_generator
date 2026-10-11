@@ -4,7 +4,7 @@ import {
   UserPlus, Download, FileText, Printer, Share2, Trash2, Copy, Check, AlertCircle,
 } from 'lucide-react';
 import CardStage from '../components/CardStage';
-import { getOrganization, createMember, existingMemberIds } from '../services/localStore';
+import { getOrganization, createMember, existingMemberIds } from '../services/members';
 import { validateMemberForm, validateImageFile, checkImageDimensions } from '../utils/validation';
 import { compressImage, readAsDataUrl, readSize, formatBytes } from '../utils/imageProcessing';
 import { addMonths, toISODate, today } from '../utils/date';

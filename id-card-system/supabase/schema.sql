@@ -62,6 +62,19 @@ create table if not exists organization (
   organization_name_hi  text not null default '',
   registration_mark     text not null default '',
   registration_text     text not null default '',
+
+  -- The registration number itself, shown under the "पंजीकरण सं०" label.
+  -- registration_text is only the LABEL; without this the card has nothing to
+  -- print beside it.
+  registration_value    text not null default '',
+
+  -- English trust name. The card's single most prominent element.
+  trust_name_en         text not null default '',
+
+  -- "Government of Uttar Pradesh" - printed in the header between the
+  -- registration and ID numbers.
+  authority_text        text not null default '',
+
   iso_text              text not null default '',
 
   logo_url              text,
@@ -110,6 +123,16 @@ create table if not exists members (
   state              text not null check (char_length(state) between 1 and 60),
   district           text not null default '',
 
+  -- Compressed photo as a data URL.
+  --
+  -- The browser already downscales and re-encodes the photo to roughly 60KB
+  -- before it ever reaches this layer (see utils/photoCompression), so storing
+  -- the data URL directly is well under Postgres' practical limits and lets the
+  -- card render it with no extra round trip.
+  --
+  -- photo_path is the alternative - an object key in the private bucket - kept
+  -- for organisations that would rather not store base64 in the database.
+  photo_url          text,
   photo_path         text,
 
   valid_from         date,
@@ -361,8 +384,19 @@ insert into storage.buckets (id, name, public)
 values ('id-assets', 'id-assets', false)
 on conflict (id) do nothing;
 
-comment on table storage.buckets is
-  'Private bucket. Member photos and organisation assets are served to admins via signed URLs.';
+/*
+ * NOTE: there is deliberately no `comment on table storage.buckets` here.
+ *
+ * On current Supabase projects storage.buckets is owned by the internal
+ * supabase_storage_admin role, not by the role the SQL editor runs as, so a
+ * COMMENT ON there fails with:
+ *
+ *   ERROR: 42501: must be owner of table buckets
+ *
+ * The comment was documentation only. The other COMMENT ON statements in this
+ * file target tables this script creates, so they are owned correctly and work
+ * fine.
+ */
 
 -- Objects are namespaced "members/<member_id>/..." - no path traversal is
 -- possible because the policy matches the caller's admin role, not the path.

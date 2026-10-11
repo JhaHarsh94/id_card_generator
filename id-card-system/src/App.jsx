@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { hydrateStores } from './services/members';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/AdminLayout';
 import Login from './pages/Login';
@@ -14,6 +16,9 @@ import Verification from './pages/Verification';
 import Settings from './pages/Settings';
 import SimplePage from './pages/SimplePage';
 import CardPreview from './pages/CardPreview';
+// Self-hosted Devanagari face. Loaded before global.css so the token stack
+// resolves to it, and same-origin so html-to-image can embed it when exporting.
+import './styles/fonts.css';
 import './styles/global.css';
 import './styles/dashboard.css';
 import './styles/details.css';
@@ -37,6 +42,18 @@ function AdminRoutes() {
 }
 
 export default function App() {
+  /*
+   * Warm the data caches before anything renders against them.
+   *
+   * getOrganization() and existingMemberIds() are synchronous by design (see
+   * services/members.js), so on first paint they return whatever the local
+   * fallback holds. This one-shot fetch replaces that with the real database
+   * row. It is a no-op when Supabase is not configured.
+   */
+  useEffect(() => {
+    hydrateStores();
+  }, []);
+
   return (
     <AuthProvider>
       <BrowserRouter>

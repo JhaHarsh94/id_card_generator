@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
-import { listMembers } from '../services/localStore';
+import { listMembers } from '../services/members';
 import { deriveStatus, summarise } from '../utils/status';
 import { formatDate, describeValidity } from '../utils/date';
 

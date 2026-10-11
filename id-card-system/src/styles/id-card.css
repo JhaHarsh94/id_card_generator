@@ -54,12 +54,25 @@
    HEADER  (0 - 24.6%)
    ========================================================================== */
 
+/*
+ * Header height.
+ *
+ * Raised from 146px to 170px. The company name was previously scaled by the
+ * auto-fit down to roughly two thirds of its natural size, purely because the
+ * corners and the name were competing for the same 146px. Giving the header
+ * more room lets the name run at a size that still clears the card's edges,
+ * instead of one that touches them and reads as clipped.
+ *
+ * The body is shortened by exactly the same amount so the support band and the
+ * footer keep their absolute positions (432px and 476px) and nothing below the
+ * header has to move.
+ */
 .idcard__header {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 146px;
+  height: 170px;
   overflow: hidden;
 }
 
@@ -125,35 +138,42 @@
 
 /* ---- logo block, left side of the body ----------------------------------
    The old blue/red diagonal tile fought with the logo's own red and gold and
-   made the block look busy. A clean plate with a gold hairline reads far more
-   premium and lets the emblem speak.
+   made the block look busy. A clean plate reads far more premium and lets the
+   emblem speak.
+
+   The frame now matches .idcard__photo exactly - same 3px brand-red border,
+   same outer gold ring, same square corners - so the logo and the photo read
+   as one matched pair framing the card, rather than two different treatments.
    -------------------------------------------------------------------------- */
 
 .idcard__logo {
   position: absolute;
   left: 24px;
-  top: 10px;
-  width: 196px;
-  /* taller than the photo, so the emblem has room to breathe */
-  height: 224px;
+  top: 6px;
+  width: 168px;
+  /*
+   * Square, and the same size as the photo (see .idcard__photo). The logo used
+   * to be 196x224 - taller than the photo, so the emblem had room to breathe -
+   * but the right-hand column now stacks photo, signatory and QR vertically and
+   * needed the height back. Both blocks shrank together so they still read as a
+   * matched pair.
+   */
+  height: 168px;
   display: grid;
   place-items: center;
   padding: 12px;
   background: linear-gradient(160deg, #ffffff 0%, #fafbff 100%);
-  border: 1px solid #d8dced;
-  border-radius: 3px;
+  border: 3px solid var(--c-red-dark);
   overflow: hidden;
-  /* faint inset lift, like a mounted plate */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 1px 3px rgba(20, 26, 70, 0.08);
+  /* the same gold hairline ring the photo carries, one pixel outside the red */
+  box-shadow: 0 0 0 1px rgba(214, 178, 62, 0.6);
 }
 
 /* thin gold rule inset from the block edge */
 .idcard__logo-frame {
   position: absolute;
-  inset: 5px;
+  inset: 7px;
   border: 1px solid rgba(197, 158, 45, 0.5);
-  border-radius: 2px;
   pointer-events: none;
 }
 
@@ -179,64 +199,85 @@
   text-align: center;
 }
 
+/*
+ * THE MOST PROMINENT ELEMENT ON THE CARD.
+ *
+ * The client asked for the company name to carry the greatest weight and to be
+ * as bold as the organisation's earlier display heading, so this is set larger
+ * than every other line, at weight 900, with a deeper extrusion and a stronger
+ * glow than the member text beneath it.
+ */
+/*
+ * THE MOST PROMINENT ELEMENT ON THE CARD.
+ *
+ * Single gold colour. It was previously split into two - red over the blue half
+ * of the header, white over the red half - so that each half inverted against
+ * the field it sat on. The client asked for one solid colour instead.
+ *
+ * Gold is the right pick rather than a dark hue: the header is a dark blue-to-red
+ * gradient, so a dark name would simply vanish. Gold is the only hue already
+ * present in the card (emblem, corner rules, seam hairline) that holds its
+ * contrast against BOTH halves, and it is what a trust or government card of
+ * this kind conventionally uses.
+ *
+ * The dark read the client asked for comes from the extrusion rather than the
+ * fill - five solid shadow steps, near-black, plus a heavy outline - which makes
+ * the gold look deep rather than pale.
+ */
 .idcard__trust-name {
   display: inline-block;
-  font-size: 40px;
+  font-size: 46px;
   font-weight: 900;
-  line-height: 1.04;
-  letter-spacing: 0.015em;
+  line-height: 1.08;
+  letter-spacing: 0.005em;
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
-}
-
-/*
- * Inverted dual colour. The header is a diagonal split - blue field on the left,
- * brand red on the right - so each half of the name is coloured with the
- * OPPOSITE of the field it sits on:
- *
- *   text over the BLUE field  ->  RED
- *   text over the RED  field  ->  BLUE
- *
- * Both halves keep a navy outline and glow so they stay legible and heavy.
- */
-.idcard__trust-part {
-  display: inline-block;
-  /* explicit word gap: the two halves are separate inline blocks, so the
-     browser does not insert one between them */
-  margin-right: 0.28em;
-  -webkit-text-stroke: 2.5px var(--c-blue-dark);
+  color: #F0C23C;
+  /* White frame on all four sides. It separates the gold name from the blue/red
+     header behind it and gives it a defined edge, which the gold-on-gradient
+     alone did not. The stroke is the dark extrusion and must stay ABOVE the
+     frame in paint order, or the frame would eat into the letterforms. */
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  padding: 2px 14px 4px;
+  -webkit-text-stroke: 3px #2A1D02;
   paint-order: stroke fill;
-}
-
-.idcard__trust-part--blue { margin-right: 0; }
-
-.idcard__trust-part--red {
-  color: #FF5A63;
   text-shadow:
-    3px 3px 0 #0b1039,
-    5px 5px 10px rgba(0, 0, 0, 0.5);
+    1.5px 1.5px 0 #2A1D02,
+    3px 3px 0 #1F1602,
+    4.5px 4.5px 0 #140E01,
+    6px 6px 0 #0C0800,
+    8px 8px 0 #060400,
+    11px 11px 20px rgba(0, 0, 0, 0.7),
+    15px 15px 34px rgba(0, 0, 0, 0.5);
 }
-
-/* Brighter, with a stronger glow, so the blue half reads as the highlighted
-   half against the red field. */
-.idcard__trust-part--blue {
-  color: #E8EFFF;
-  text-shadow:
-    2px 2px 0 #7D0C17,
-    3px 3px 0 #5C0810,
-    4px 4px 0 #46060C,
-    6px 6px 16px rgba(255, 255, 255, 0.35),
-    7px 7px 20px rgba(0, 0, 0, 0.5);
-}
-
-.idcard__trust-name.size-md { font-size: 33px; }
-.idcard__trust-name.size-sm { font-size: 28px; }
 
 /*
- * The name + registration are laid out as one vertically-centred group so the
- * name's optical centre lands on the diagonal seam, i.e. squarely between the
- * blue and red halves rather than sitting inside one of them.
+ * The two-colour split is gone from the markup along with these rules.
+ * They coloured each half of the name with the opposite of the header field
+ * beneath it (red over blue, blue over red); the name is now one gold colour
+ * and carries its own stroke and extrusion directly. Nothing renders
+ * .idcard__trust-part any more.
+ */
+
+/* --- removed: .idcard__trust-part--blue and --red --- */
+
+/*
+ * The trust name's size is set inline by useFittedFontSize(), which measures
+ * the rendered box and scales it down until it fits. The .size-md/.size-sm
+ * steps that used to live here were keyed to the string's character count and
+ * went stale the moment the real webfont replaced the system fallback.
+ */
+
+/*
+ * The trust name and the state authority line are laid out as one group that
+ * occupies the lower half of the header: the top corners are taken by the
+ * registration and ID blocks, and the group's optical centre is kept low so the
+ * name's baseline sits on the diagonal seam.
+ *
+ * (There used to be two .idcard__header-text rules here - an earlier revision
+ * left one behind and the later block silently won. They are merged now so the
+ * geometry is stated once.)
  */
 .idcard__header-text {
   position: absolute;
@@ -247,27 +288,34 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 9px;
-  /* leave the top corners clear for the registration / ID blocks */
-  padding: 0 130px 6px;
+  justify-content: flex-start;
+  gap: 7px;
+  /*
+   * The corner blocks (registration left, ID right) occupy roughly the top
+   * 12-71px of the header, and this group starts at 88px - so the two never
+   * share vertical space.
+   *
+   * The horizontal padding is what stops the name touching the card's edges.
+   * At 26px a side the name ran the full width and read as though it were
+   * clipped; 34px gives it visible air on both sides while still leaving far
+   * more room than the 120px this started with, which was reserving width for
+   * corners that never share its row.
+   *
+   * At 54px with line-height 1.08 the name is ~58px tall, so 88 + 58 = 146px
+   * clears the 170px header with room for the 5px accent bar. Raise the
+   * padding only together with the corner font size, or the two will collide.
+   */
+  padding: 88px 34px 0;
   text-align: center;
 }
 
-.idcard__header-text {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  /* sits under the 3D trust name */
-  padding-top: 46px;
-  text-align: center;
-}
+/*
+ * The state authority line ("Government of Uttar Pradesh") was tried in the
+ * header for a while, under the trust name, in gold with wide letterspacing.
+ * The client preferred it back in the footer, where it reads as part of the
+ * address block. Its first-line styling is the ::first-line rule on
+ * .idcard__footer-text below.
+ */
 
 /* ---- header side blocks (registration left · founder right) -------------
    These sit in the header's diagonal corners, so they need their own dark
@@ -328,18 +376,43 @@
   text-align: right;
 }
 
+/*
+ * The two top corners carry the same treatment as the member's name - heavy
+ * weight, outline and a cast shadow - so the card's identity data reads with
+ * equal authority.
+ *
+ * Label and value share ONE size. They used to be 15px over 30px, which made
+ * each corner look like a caption with a headline underneath it rather than a
+ * matched pair of two facts. Sharing the size is what makes the pair read as
+ * one block; the two are still separated by the casing and the weight rather
+ * than by scale.
+ *
+ * Both inherit the card's stack (--font-deva), which puts the self-hosted
+ * variable Noto first, so the Devanagari "पंजीकरण सं०" and the Latin "ID No."
+ * resolve to the same face at the same weight.
+ *
+ * Size dropped 25px -> 21px to buy the company name vertical and horizontal
+ * room. The client found the name running flush to the card edges, and these
+ * two blocks are the only thing competing with it for that space.
+ */
 .idcard__corner-label {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: 21px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  opacity: 0.9;
+  line-height: 1.16;
+  -webkit-text-stroke: 1.2px rgba(10, 16, 57, 0.85);
+  paint-order: stroke fill;
 }
 
 .idcard__corner-value {
-  font-size: 19px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  font-size: 21px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 1.16;
+  -webkit-text-stroke: 1.6px rgba(10, 16, 57, 0.9);
+  paint-order: stroke fill;
+  text-shadow: 1.5px 1.5px 6px rgba(0, 0, 0, 0.45);
 }
 
 .idcard__header-side-label {
@@ -466,10 +539,14 @@
 
 .idcard__body {
   position: absolute;
-  top: 146px;
+  top: 170px;
   left: 0;
   right: 0;
-  height: 286px;
+  /* Runs all the way to the footer's top edge (476px).
+     It used to stop at 432px with the support band filling 432-476; that band
+     has been removed, so the white panel claims its space instead of leaving a
+     gap above the footer. */
+  height: 306px;
   /*
    * Flat white read as an empty box on a printed card. A very light cool
    * gradient plus a faint 45-degree guilloche-style pinstripe gives the panel
@@ -521,23 +598,39 @@
 
 .idcard__identity {
   position: absolute;
-  left: 232px;
-  top: 34px;
-  width: 380px;
+  left: 228px;
+  top: 28px;
+  width: 404px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
 }
 
+/*
+ * Without this, the column's children are flex items and shrink to fit the
+ * container, which pulls consecutive lines into each other. Their natural
+ * height is already budgeted for, so they must never be compressed.
+ */
+.idcard__identity > * {
+  flex: 0 0 auto;
+}
+
 .idcard__name {
   color: var(--c-blue);
-  font-size: 45px;
+  font-size: 42px;
   font-weight: 900;
-  line-height: 1.06;
-  letter-spacing: -0.5px;
+  /* Generous leading: the outline is centred on the glyph edge and grows
+     ~1px outward per side, so tight leading makes consecutive lines collide. */
+  line-height: 1.22;
+  letter-spacing: -0.3px;
   max-width: 100%;
   overflow-wrap: break-word;
+  -webkit-text-stroke: 2px #0E1551;
+  paint-order: stroke fill;
+  text-shadow:
+    1.5px 1.5px 0 #0E1551,
+    3px 3px 8px rgba(16, 21, 81, 0.26);
 }
 
 .idcard__name.size-md { font-size: 38px; }
@@ -546,36 +639,46 @@
 .idcard__designation {
   margin-top: 14px;
   color: var(--c-red);
-  font-size: 30px;
-  font-weight: 800;
-  line-height: 1.15;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.3;
   max-width: 100%;
   overflow-wrap: break-word;
+  -webkit-text-stroke: 1.4px #7D0C17;
+  paint-order: stroke fill;
+  text-shadow:
+    1.2px 1.2px 0 #7D0C17,
+    2.5px 2.5px 6px rgba(125, 12, 23, 0.22);
 }
 
-.idcard__designation.size-md { font-size: 26px; }
-.idcard__designation.size-sm { font-size: 22px; }
+.idcard__designation.size-md { font-size: 24px; }
+.idcard__designation.size-sm { font-size: 21px; }
 
 .idcard__state {
-  margin-top: 8px;
+  margin-top: 10px;
   color: var(--c-blue);
-  font-size: 27px;
-  font-weight: 800;
-  line-height: 1.15;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.3;
   max-width: 100%;
   overflow-wrap: break-word;
+  -webkit-text-stroke: 1.1px #0E1551;
+  paint-order: stroke fill;
+  text-shadow: 1.2px 1.2px 5px rgba(16, 21, 81, 0.2);
 }
 
-.idcard__state.size-md { font-size: 24px; }
-.idcard__state.size-sm { font-size: 21px; }
+.idcard__state.size-md { font-size: 23px; }
+.idcard__state.size-sm { font-size: 20px; }
 
 .idcard__validity {
   margin-top: 14px;
   color: var(--c-blue);
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1.1;
+  font-size: 27px;
+  font-weight: 900;
+  line-height: 1.2;
   white-space: nowrap;
+  -webkit-text-stroke: 1px #0E1551;
+  paint-order: stroke fill;
 }
 
 .idcard__validity em { font-style: normal; font-weight: 700; }
@@ -632,8 +735,8 @@
   left: 640px;
   top: 6px;
   /* square, matching the logo block exactly */
-  width: 196px;
-  height: 196px;
+  width: 168px;
+  height: 168px;
   overflow: hidden;
   /* brand red frame, tying the photo to the header's red half */
   border: 3px solid var(--c-red-dark);
@@ -657,14 +760,22 @@
   background: linear-gradient(150deg, #f2f4fb 0%, #e4e8f6 100%);
 }
 
-/* ---- QR ---------------------------------------------------------------- */
+/* ---- QR ----------------------------------------------------------------
+   Moved to the LEFT column, centred beneath the logo.
+
+   It was stacked under the photo on the right, which crowded that column. The
+   left column - logo at 24..192 - has its own axis at 24 + 84 = 108px, and the
+   QR is centred on that instead. The right column now holds only the photo and
+   the signatory.
+   -------------------------------------------------------------------------- */
 
 .idcard__qr {
   position: absolute;
-  left: 640px;
-  top: 212px;
-  width: 58px;
-  height: 58px;
+  /* centred on the logo's axis: 108 - 22 */
+  left: 86px;
+  top: 190px;
+  width: 44px;
+  height: 44px;
   padding: 3px;
   background: var(--c-white);
   border: 1px solid var(--c-blue);
@@ -679,16 +790,22 @@
   image-rendering: pixelated;
 }
 
+/*
+ * Beside the QR rather than beneath it. The column runs out of room below the
+ * code - putting the caption under it pushed it past the body's bottom edge,
+ * where the support band covered it.
+ */
 .idcard__qr-label {
   position: absolute;
-  left: 626px;
-  top: 272px;
-  width: 86px;
-  text-align: center;
+  left: 136px;
+  top: 203px;
+  width: 62px;
+  text-align: left;
   color: var(--c-blue);
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 700;
   letter-spacing: 0.03em;
+  line-height: 1.25;
   text-transform: uppercase;
 }
 
@@ -698,12 +815,13 @@
    620x505 aspect ratio.
    -------------------------------------------------------------------------- */
 
-/* Photo runs 6-202. The stamp is anchored to the photo's LOWER-left corner,
-   which is where the organisation places it on its printed proofs. */
+/* The photo now runs 6-174 (168 square, was 196). The stamp is anchored so its
+   bottom stays flush with the photo's bottom edge, which is where the
+   organisation places it on its printed proofs. Keep the two in step. */
 .idcard__seal {
   position: absolute;
   left: 572px;
-  top: 106px;
+  top: 78px;
   width: 118px;
   height: 96px;
   display: grid;
@@ -735,12 +853,17 @@
 
 /* ---- signatory (fixed identity, fixed position) ------------------------ */
 
+/*
+ * Centred directly under the photo, which is what the client asked for - it
+ * used to sit to the right of the QR in the column's leftover space.
+ * Centred on the photo's axis (724px) and on the photo's own 168px width.
+ */
 .idcard__signatory {
   position: absolute;
-  left: 706px;
-  top: 216px;
-  width: 130px;
-  text-align: right;
+  left: 640px;
+  top: 180px;
+  width: 168px;
+  text-align: center;
 }
 
 .idcard__signatory-name {
@@ -766,7 +889,7 @@
   top: 432px;
   left: 0;
   right: 0;
-  height: 54px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -803,30 +926,111 @@
    FOOTER  (90% - 100%)
    ========================================================================== */
 
+/*
+ * Footer now carries the same blue+red diagonal as the header, so the card is
+ * bracketed by brand colour at both ends instead of trailing off into white.
+ *
+ * The gradient is mirrored relative to the header (blue on the left here, red
+ * on the right) because the seam reads as a single continuous gesture when the
+ * two are viewed together, and because the footer text is centred - a seam
+ * passing under the middle of the words would fight the glyphs.
+ */
 .idcard__footer {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 54px;
+  /* taller: the footer now carries the state authority line as well */
+  height: 64px;
   display: grid;
   place-items: center;
   padding: 0 26px;
-  /* White with a navy rule, as on the printed proofs. A solid navy footer would
-     merge into the navy pill above it. */
-  background: var(--c-white);
-  border-top: 2px solid var(--c-blue);
+  overflow: hidden;
+  background: linear-gradient(
+    to bottom right,
+    #1E2685 0%,
+    #2A34A0 42%,
+    #E53C48 42.4%,
+    #BE1523 100%
+  );
+  /* gold hairline picks up the header's seam and separates footer from body */
+  border-top: 2px solid #D6B23E;
 }
 
+/* same soft light sweep the header uses, so both bands finish alike */
+.idcard__footer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.13) 0%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  pointer-events: none;
+}
+
+/* text sits above the decorative layer */
+/*
+ * Both footer lines carry the address and the contact numbers - the two things
+ * a holder of the card actually needs - so they are set at weight 900 rather
+ * than the earlier 700, which read as small print on the blue/red gradient.
+ */
 .idcard__footer-text {
-  color: var(--c-blue);
-  font-size: 16.5px;
-  font-weight: 600;
-  line-height: 1.45;
+  position: relative;
+  z-index: 1;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.5;
   text-align: center;
   white-space: pre-line; /* honours \n in the organisation's address block */
   letter-spacing: 0.005em;
+  /* dark halo keeps the text legible where it crosses the blue/red seam */
+  text-shadow: 0 1px 2px rgba(10, 14, 60, 0.55);
 }
+
+/*
+ * "Government of Uttar Pradesh", in the header between the two corner blocks.
+ *
+ * Treated like the company name above it - same gold, same dark extrusion -
+ * but a couple of steps down in scale and shadow depth, so the two read as
+ * related without competing. The trust name is the card's headline; this is
+ * the authority line under it.
+ *
+ * z-index matters - the corner blocks set z-index: 3 to sit above the header
+ * background, and this line is a later sibling, so it needs the same to avoid
+ * being painted under them.
+ */
+.idcard__authority {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  white-space: nowrap;
+  color: #F0C23C;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  -webkit-text-stroke: 1.6px #2A1D02;
+  paint-order: stroke fill;
+  text-shadow:
+    1px 1px 0 #2A1D02,
+    2px 2px 0 #1F1602,
+    3px 3px 0 #140E01,
+    5px 5px 12px rgba(0, 0, 0, 0.65);
+  /* The gold rules that used to flank this line were removed - they read as
+     stray vertical bars against the header gradient rather than as framing. */
+}
+
+/*
+ * The footer's first line is now the head-office address; the state authority
+ * moved up into the header as .idcard__authority, so the ::first-line override
+ * that used to fatten it is gone.
+ */
 
 /* ==========================================================================
    Demo flag

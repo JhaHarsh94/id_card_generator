@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Mail, AlertCircle, CheckCircle2, Send } from 'lucide-react';
 import { requestPasswordReset } from '../services/auth';
-import { getOrganization } from '../services/localStore';
+import { getOrganization } from '../services/members';
 import '../styles/auth.css';
 
 /**

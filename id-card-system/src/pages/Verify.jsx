@@ -4,7 +4,13 @@ import {
   CheckCircle2, AlertTriangle, XCircle, ShieldQuestion,
   UserRound, MapPin, CalendarDays, IdCard as IdCardIcon, LogIn,
 } from 'lucide-react';
-import { getMember, getOrganization } from '../services/localStore';
+/*
+ * getPublicMember, not getMember: the verification page is visited by whoever
+ * scans the QR, with no session. The members table is admin-only under RLS, so
+ * the admin read would return nothing for an anonymous visitor and every card
+ * would come back NOT FOUND.
+ */
+import { getPublicMember, getOrganization } from '../services/members';
 import { deriveStatus, STATUS } from '../utils/status';
 import { formatDate, describeValidity } from '../utils/date';
 import '../styles/verify.css';
@@ -48,7 +54,7 @@ export default function Verify() {
   useEffect(() => {
     let alive = true;
 
-    getMember(lookedUp)
+    getPublicMember(lookedUp)
       .then((member) => {
         if (!alive) return;
         setState({
