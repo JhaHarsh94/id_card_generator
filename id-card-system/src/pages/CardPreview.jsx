@@ -16,6 +16,7 @@ export default function CardPreview() {
   const [name, setName] = useState('M.K Kabira');
   const [designation, setDesignation] = useState('State President');
   const [state, setState] = useState('Uttar Pradesh');
+  const [district, setDistrict] = useState('Baghpat');
   const [memberId, setMemberId] = useState('0095030');
 
   const validUntil = formatDate(addMonths(today(), 11));
@@ -24,6 +25,7 @@ export default function CardPreview() {
     name,
     designation,
     state,
+    district,
     memberId,
     validUntil,
     photoUrl: null,

@@ -205,6 +205,7 @@ function IDCardTemplate(
     name = '',
     designation = '',
     state = '',
+    district = '',
     validUntil = '',
     memberId = '',
     photoUrl = null,
@@ -314,6 +315,16 @@ function IDCardTemplate(
           {state ? (
             <div className={`idcard__state ${fit(state, 'size-md', 'size-sm')}`}>
               {state}
+            </div>
+          ) : null}
+
+          {/* District, directly under the state. It was collected on the form
+              and stored in the database but had no slot on the card, so it was
+              silently dropped. Rendered conditionally: a card with no district
+              entered must not print an empty line. */}
+          {district ? (
+            <div className={`idcard__district ${fit(district, 'size-md', 'size-sm')}`}>
+              {district}
             </div>
           ) : null}
 
