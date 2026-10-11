@@ -86,7 +86,7 @@ export const organizationDefaults = {
    * Contact numbers are listed exactly as supplied by the organisation.
    */
   footerText:
-    'निवास कार्यालय :- मेरठ बागपत रोड बालैनी बागपत उत्तर प्रदेश 250626\n'
+    'मुख्य कार्यालय :- मेरठ बागपत रोड बालैनी बागपत उत्तर प्रदेश 250626\n'
     + 'संपर्क सूत्र : 9458447100, 9557502151, 9457396300',
 
   // ---- ID numbering -----------------------------------------------------
