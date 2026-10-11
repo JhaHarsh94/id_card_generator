@@ -47,8 +47,64 @@ function fit(text, md, sm) {
  * Returns the font size in px to apply, and re-measures when webfonts settle,
  * since the first paint measures against a fallback face.
  */
+/**
+ * One shared 2D context for text measurement.
+ *
+ * measureText needs a font that is actually loaded to report a real advance
+ * width, so callers must ensure the webfont has settled first (see
+ * fontsReady below). The context is reused because creating one per measurement
+ * is wasteful when a card renders several fitted headings.
+ */
+let textContext = null;
+function getTextContext() {
+  if (textContext) return textContext;
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  textContext = canvas.getContext('2d');
+  return textContext;
+}
+
 function useFittedFontSize(ref, { max, min }) {
   const [px, setPx] = useState(max);
+
+  /*
+   * Flips once the webfont this card renders in is genuinely available.
+   *
+   * `document.fonts.ready` is NOT sufficient and relying on it silently is what
+   * caused the mobile overflow: with font-display: block the woff2 is fetched
+   * only once something uses it, and on a phone that download finishes long
+   * after `ready` has resolved. The card was therefore measured against the
+   * fallback face, which is narrower than Noto, and kept a size that was too
+   * large once the real font arrived.
+   *
+   * Making it STATE means the measuring effect below is re-run through React's
+   * normal dependency path. Chaining a bare promise into measure() instead
+   * depends on the effect having subscribed at all, which is exactly the
+   * assumption that turned out to be wrong.
+   */
+  const [fontsReady, setFontsReady] = useState(false);
+
+  useEffect(() => {
+    const fonts = typeof document !== 'undefined' ? document.fonts : null;
+    if (!fonts) {
+      setFontsReady(true);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const markReady = () => { if (!cancelled) setFontsReady(true); };
+
+    // Both weights: the size is chosen from the 900 render, but a 400 face
+    // arriving later would still reflow the text.
+    Promise.all([
+      fonts.load('900 46px "Noto Sans Devanagari"'),
+      fonts.load('400 46px "Noto Sans Devanagari"'),
+    ]).catch(() => {}).then(markReady);
+
+    fonts.ready.then(markReady).catch(() => {});
+
+    return () => { cancelled = true; };
+  }, []);
 
   const measure = useCallback(() => {
     const el = ref.current;
@@ -56,47 +112,69 @@ function useFittedFontSize(ref, { max, min }) {
     if (!el || !host) return;
 
     const hostStyle = getComputedStyle(host);
-    const available =
-      host.clientWidth
-      - parseFloat(hostStyle.paddingLeft || '0')
-      - parseFloat(hostStyle.paddingRight || '0');
+    const elStyle = getComputedStyle(el);
+    const num = (v) => parseFloat(v) || 0;
+
+    // The element's own padding and border consume width too - the trust name
+    // has a white frame: 2px border plus 14px padding a side. Ignoring them made
+    // the name overflow by exactly that much.
+    const frame = num(elStyle.paddingLeft) + num(elStyle.paddingRight)
+      + num(elStyle.borderLeftWidth) + num(elStyle.borderRightWidth);
+
+    const available = host.clientWidth
+      - num(hostStyle.paddingLeft) - num(hostStyle.paddingRight) - frame;
     if (available <= 0) return;
 
-    // Measure at the ceiling size so the ratio is taken from a known baseline
-    // rather than compounding across successive re-renders.
-    el.style.fontSize = `${max}px`;
-    const natural = el.scrollWidth;
-    if (natural <= available) {
-      setPx(max);
-      return;
-    }
+    const text = el.textContent.trim();
+    if (!text) return;
 
-    setPx(Math.max(min, Math.floor(max * (available / natural))));
+    /*
+     * Reserve the width that canvas measurement does not see:
+     *   - -webkit-text-stroke grows the glyph on BOTH sides of every letter
+     *   - letter-spacing is not applied by measureText
+     * Without this the computed size still overflowed by ~23px, because the
+     * number the canvas reports is smaller than what actually gets painted.
+     */
+    const stroke = num(elStyle.webkitTextStrokeWidth);
+    const tracking = num(elStyle.letterSpacing) * text.length;
+    const usable = available - stroke * 2 - tracking - 2;
+    if (usable <= 0) return;
+
+    /*
+     * Measure with a canvas, NOT el.scrollWidth.
+     *
+     * scrollWidth reads 0 whenever the card has not been laid out yet - it sits
+     * in a stage whose width is only known after a zoom calculation, and it can
+     * be hidden while that happens. A 0 was silently treated as "it fits", so
+     * the ceiling size was kept and the name overflowed. It is worse than a
+     * crash because nothing looked wrong.
+     *
+     * measureText depends only on the font, so it is correct whether or not the
+     * element has been laid out, and it needs no DOM mutation - which also
+     * avoids fighting React over the inline font-size.
+     */
+    const ctx = getTextContext();
+    if (!ctx) return;
+
+    ctx.font = `${elStyle.fontStyle} ${elStyle.fontWeight} ${max}px ${elStyle.fontFamily}`;
+    const natural = ctx.measureText(text).width;
+    if (!natural || !Number.isFinite(natural)) return;
+
+    setPx(natural <= usable ? max : Math.max(min, Math.floor(max * (usable / natural))));
   }, [ref, max, min]);
 
   useLayoutEffect(() => {
     measure();
-  }, [measure]);
+  }, [measure, fontsReady]);
 
+  // Re-measure whenever the available width changes.
   useEffect(() => {
-    // A fallback face measures differently from the real one. Re-run once the
-    // webfonts have loaded, otherwise the first measurement is kept and the
-    // heading stays the wrong size.
-    let cancelled = false;
-    const rerun = () => { if (!cancelled) measure(); };
-
-    if (document.fonts?.status === 'loaded') {
-      rerun();
-    } else {
-      document.fonts?.ready.then(rerun).catch(() => {});
-    }
-
-    window.addEventListener('resize', rerun);
-    return () => {
-      cancelled = true;
-      window.removeEventListener('resize', rerun);
-    };
-  }, [measure]);
+    const host = ref.current?.parentElement;
+    if (!host || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(() => measure());
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, [measure, ref]);
 
   return px;
 }
