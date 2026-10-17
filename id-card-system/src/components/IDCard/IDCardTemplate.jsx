@@ -64,24 +64,26 @@ function getTextContext() {
   return textContext;
 }
 
-function useFittedFontSize(ref, { max, min }) {
-  const [px, setPx] = useState(max);
-
-  /*
-   * Flips once the webfont this card renders in is genuinely available.
-   *
-   * `document.fonts.ready` is NOT sufficient and relying on it silently is what
-   * caused the mobile overflow: with font-display: block the woff2 is fetched
-   * only once something uses it, and on a phone that download finishes long
-   * after `ready` has resolved. The card was therefore measured against the
-   * fallback face, which is narrower than Noto, and kept a size that was too
-   * large once the real font arrived.
-   *
-   * Making it STATE means the measuring effect below is re-run through React's
-   * normal dependency path. Chaining a bare promise into measure() instead
-   * depends on the effect having subscribed at all, which is exactly the
-   * assumption that turned out to be wrong.
-   */
+/*
+ * Flips once the webfont this card renders in is genuinely available.
+ *
+ * `document.fonts.ready` is NOT sufficient and relying on it silently is what
+ * caused the mobile overflow: with font-display: block the woff2 is fetched
+ * only once something uses it, and on a phone that download finishes long
+ * after `ready` has resolved. The card was therefore measured against the
+ * fallback face, which is narrower than Noto, and kept a size that was too
+ * large once the real font arrived.
+ *
+ * Making it STATE means the measuring effects below re-run through React's
+ * normal dependency path. Chaining a bare promise into measure() instead
+ * depends on the effect having subscribed at all, which is exactly the
+ * assumption that turned out to be wrong.
+ *
+ * Shared implementation for both the width fitter and the column-height fitter.
+ * Two hand-rolled copies of this state would resolve at slightly different
+ * times, and the card would resize twice for no reason.
+ */
+function useFontsReady() {
   const [fontsReady, setFontsReady] = useState(false);
 
   useEffect(() => {
@@ -105,6 +107,13 @@ function useFittedFontSize(ref, { max, min }) {
 
     return () => { cancelled = true; };
   }, []);
+
+  return fontsReady;
+}
+
+function useFittedFontSize(ref, { max, min }) {
+  const [px, setPx] = useState(max);
+  const fontsReady = useFontsReady();
 
   const measure = useCallback(() => {
     const el = ref.current;
@@ -180,6 +189,47 @@ function useFittedFontSize(ref, { max, min }) {
 }
 
 /**
+ * Shrink a column just enough to keep it inside its parent.
+ *
+ * The identity column is absolutely positioned at a fixed offset inside the
+ * fixed-height body, and every block in it is `flex: 0 0 auto`. That is correct
+ * for the design - nothing may reflow - but it means content can only grow
+ * downward, and the one input that grows unpredictably is the member's name: a
+ * three- or four-word name wraps onto a second line and pushes the validity and
+ * scope lines straight through the footer band.
+ *
+ * Rather than picking smaller margins that happen to fit today's longest test
+ * name, the column is measured and scaled down by whatever factor is needed.
+ * The proportions between the lines are preserved, so the card still reads as
+ * the locked design - just a few percent smaller on the rare card that needs it.
+ *
+ * Units: `clientHeight` and `offsetTop` are BOTH layout pixels, unaffected by
+ * the ancestor zoom transform that wraps the card for preview and export, so
+ * they can be compared directly. Reading the same distances from
+ * getBoundingClientRect() would silently mix scaled and unscaled units.
+ */
+function useFittedColumnScale(ref, key, { min = 0.6, gap = 6 } = {}) {
+  const [scale, setScale] = useState(1);
+  const fontsReady = useFontsReady();
+
+  useLayoutEffect(() => {
+    if (!fontsReady) return;
+    const el = ref.current;
+    const host = el?.parentElement;
+    if (!el || !host) return;
+
+    const available = host.clientHeight - el.offsetTop - gap;
+    const natural = el.scrollHeight;
+    if (available <= 0 || !natural || !Number.isFinite(natural)) return;
+
+    const next = natural <= available ? 1 : Math.max(min, available / natural);
+    setScale((prev) => (Math.abs(prev - next) < 0.005 ? prev : next));
+  }, [fontsReady, ref, gap, min, key]);
+
+  return scale;
+}
+
+/**
  * splitTrustName() used to cut the trust name on the word boundary nearest the
  * middle, so each half could take the colour opposite the background beneath it.
  * The name is now a single gold colour, so there is nothing to split - the
@@ -210,6 +260,17 @@ function IDCardTemplate(
     memberId = '',
     photoUrl = null,
   } = m;
+
+  /*
+   * The identity column is measured and, if the name has wrapped onto extra
+   * lines, scaled down so it cannot reach the footer. The key re-runs the
+   * measurement whenever any text in the column changes.
+   */
+  const identityRef = useRef(null);
+  const identityScale = useFittedColumnScale(
+    identityRef,
+    [name, designation, state, district, validUntil, org.scopeText].join('\u0000'),
+  );
 
   // QR encodes ONLY the absolute public verification URL — no member or admin
   // data. It must be absolute or a phone camera cannot resolve it.
@@ -301,7 +362,13 @@ function IDCardTemplate(
         </div>
 
         {/* member identity - dynamic */}
-        <div className="idcard__identity">
+        <div
+          className="idcard__identity"
+          ref={identityRef}
+          style={identityScale < 1
+            ? { transform: `scale(${identityScale})`, transformOrigin: 'top center' }
+            : undefined}
+        >
           <div className={`idcard__name ${fit(name, 'size-md', 'size-sm')}`}>
             {name || '—'}
           </div>

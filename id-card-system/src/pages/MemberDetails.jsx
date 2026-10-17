@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Pencil, Download, FileText, Printer, RefreshCw,
+  Pencil, Download, FileText, Printer, RefreshCw,
   Ban, ShieldAlert, UserRound, Copy, Check, ExternalLink,
 } from 'lucide-react';
 import CardStage from '../components/CardStage';
 import StatusBadge from '../components/StatusBadge';
+import PageHeader from '../components/admin/PageHeader';
 import { getMember, renewMember, revokeMember, getOrganization } from '../services/members';
 import { deriveStatus, STATUS } from '../utils/status';
 import { addMonths, formatDate, formatDateLong, describeValidity, toISODate, today } from '../utils/date';
@@ -148,7 +149,7 @@ export default function MemberDetails() {
           <p className="text-muted text-sm">
             No member holds the ID number {decodeURIComponent(memberId ?? '')}.
           </p>
-          <Link to="/members" className="btn btn-primary">Back to members</Link>
+          <Link to="/admin/members" className="btn btn-primary">Back to members</Link>
         </div>
       </div>
     );
@@ -156,39 +157,35 @@ export default function MemberDetails() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <Link to="/members" className="btn btn-ghost btn-sm" style={{ marginLeft: -12, marginBottom: 6 }}>
-            <ArrowLeft size={15} /> Back to members
-          </Link>
-          <div className="row gap-3">
-            <h1 className="h1">{member.fullName}</h1>
+      <PageHeader
+        title={(
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {member.fullName}
             <StatusBadge status={status} size="lg" />
-          </div>
-          <p className="page-sub">
-            {member.designation} · {member.state}
-            {member.district ? ` · ${member.district}` : ''}
-          </p>
-        </div>
-
-        <div className="page-head__actions">
-          <Link to={`/members/${encodeURIComponent(member.memberId)}/edit`} className="btn btn-secondary">
-            <Pencil size={15} /> Edit
-          </Link>
-          <button type="button" className="btn btn-secondary" disabled={!!busy} onClick={handleRenew}>
-            {busy === 'renew' ? <span className="spinner" /> : <RefreshCw size={15} />} Renew
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={!!busy || status === STATUS.REVOKED}
-            onClick={handleRevoke}
-            style={{ color: status === STATUS.REVOKED ? undefined : 'var(--danger)' }}
-          >
-            {busy === 'revoke' ? <span className="spinner" /> : <Ban size={15} />} Revoke
-          </button>
-        </div>
-      </div>
+          </span>
+        )}
+        sub={`${member.designation} · ${member.state}${member.district ? ` · ${member.district}` : ''}`}
+        trail={[
+          { label: 'Members', to: '/admin/members' },
+          { label: member.memberId },
+        ]}
+      >
+        <Link to={`/admin/members/${encodeURIComponent(member.memberId)}/edit`} className="btn btn-secondary">
+          <Pencil size={15} /> Edit
+        </Link>
+        <button type="button" className="btn btn-secondary" disabled={!!busy} onClick={handleRenew}>
+          {busy === 'renew' ? <span className="spinner" /> : <RefreshCw size={15} />} Renew
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={!!busy || status === STATUS.REVOKED}
+          onClick={handleRevoke}
+          style={{ color: status === STATUS.REVOKED ? undefined : 'var(--danger)' }}
+        >
+          {busy === 'revoke' ? <span className="spinner" /> : <Ban size={15} />} Revoke
+        </button>
+      </PageHeader>
 
       <div className="details-grid">
         {/* ---- the card ---- */}
@@ -207,6 +204,7 @@ export default function MemberDetails() {
                   name: member.fullName,
                   designation: member.designation,
                   state: member.state,
+                  district: member.district,
                   memberId: member.memberId,
                   validUntil: member.validUntil,
                   photoUrl: member.photoUrl,

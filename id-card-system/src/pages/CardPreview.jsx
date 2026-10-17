@@ -52,6 +52,7 @@ export default function CardPreview() {
           ['Name', name, setName],
           ['Designation', designation, setDesignation],
           ['State', state, setState],
+          ['District', district, setDistrict],
           ['ID', memberId, setMemberId],
         ].map(([label, value, setter]) => (
           <label key={label} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

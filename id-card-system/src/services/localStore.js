@@ -1,15 +1,19 @@
 /**
- * Local data store (development / pre-Supabase)
+ * Local data store (development fallback)
  * ---------------------------------------------------------------------------
- * Phase 5 replaces this with Supabase. Until then the app needs somewhere real
- * to read and write so the forms, the members table, exports and the public
- * verification page can all be exercised end to end.
+ * The other half of services/members.js. When no database is configured the app
+ * still needs somewhere real to read and write, so the forms, the members table,
+ * the exports and the public verification page can be exercised end to end
+ * without a server.
  *
- * Backed by localStorage, so data survives a page reload. Every record carries
- * `id`, `createdAt` and `updatedAt`.
+ * Backed by localStorage, so data survives a page reload - but it is per
+ * browser, which makes it unfit for anything beyond one machine. A production
+ * build never reaches this module: `usingApi` is true there, so
+ * services/members.js routes every call to /api instead.
  *
- * Swap this module for services/members.js when Supabase is connected - the
- * exported function signatures are deliberately identical.
+ * Every record carries `id`, `createdAt` and `updatedAt`. The exported function
+ * signatures match the API path in services/members.js deliberately, so a page
+ * never learns which backend is live.
  */
 
 import { addMonths, toISODate, today } from '../utils/date';

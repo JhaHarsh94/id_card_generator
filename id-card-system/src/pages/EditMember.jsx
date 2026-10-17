@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, IdCard, AlertCircle } from 'lucide-react';
+import { Save, IdCard, AlertCircle } from 'lucide-react';
 import MemberForm from '../components/MemberForm';
 import CardStage from '../components/CardStage';
+import PageHeader from '../components/admin/PageHeader';
 import { getMember, updateMember, getOrganization, existingMemberIds } from '../services/members';
 import { validateMemberForm } from '../utils/validation';
 import { toISODate } from '../utils/date';
@@ -91,7 +92,7 @@ export default function EditMember() {
           revocationReason: values.revocationReason?.trim() || null,
         },
       );
-      navigate(`/members/${encodeURIComponent(values.memberId.trim())}?saved=1`);
+      navigate(`/admin/members/${encodeURIComponent(values.memberId.trim())}?saved=1`);
     } catch (err) {
       setBanner({
         kind: 'error',
@@ -110,7 +111,7 @@ export default function EditMember() {
         <div className="error-state">
           <span className="icon-ring"><AlertCircle size={24} /></span>
           <p className="h3">Member not found</p>
-          <Link to="/members" className="btn btn-primary">Back to members</Link>
+          <Link to="/admin/members" className="btn btn-primary">Back to members</Link>
         </div>
       </div>
     );
@@ -127,22 +128,15 @@ export default function EditMember() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <Link
-            to={`/members/${encodeURIComponent(values.memberId)}`}
-            className="btn btn-ghost btn-sm"
-            style={{ marginLeft: -12, marginBottom: 6 }}
-          >
-            <ArrowLeft size={15} /> Back to member
-          </Link>
-          <h1 className="h1">Edit member</h1>
-          <p className="page-sub">
-            Changes are reflected in the live preview and the QR link updates with
-            the ID number.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Edit member"
+        sub="Changes are reflected in the live preview and the QR link updates with the ID number."
+        trail={[
+          { label: 'Members', to: '/admin/members' },
+          { label: values.memberId, to: `/admin/members/${encodeURIComponent(values.memberId)}` },
+          { label: 'Edit' },
+        ]}
+      />
 
       {banner ? (
         <div className={`banner banner-${banner.kind}`} role="alert">
@@ -176,7 +170,7 @@ export default function EditMember() {
             >
               <IdCard size={17} /> Check card
             </button>
-            <Link to={`/members/${encodeURIComponent(values.memberId)}`} className="btn btn-ghost btn-lg">Cancel</Link>
+            <Link to={`/admin/members/${encodeURIComponent(values.memberId)}`} className="btn btn-ghost btn-lg">Cancel</Link>
           </div>
         </form>
 
@@ -193,6 +187,7 @@ export default function EditMember() {
                   name: values.fullName,
                   designation: values.designation,
                   state: values.state,
+                  district: values.district,
                   memberId: values.memberId,
                   validUntil: values.validUntil,
                   photoUrl: values.photoUrl,

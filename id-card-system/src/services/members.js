@@ -1,23 +1,23 @@
 /**
- * Members data store - Supabase backed.
+ * Members data store.
  * ---------------------------------------------------------------------------
- * Drop-in replacement for services/members.js. The exported function
- * signatures are identical on purpose, so every page imports from here without
- * knowing which backend is live.
+ * One interface, two backends, chosen once at module load:
  *
- * The choice of backend is made once, at module load, from the environment:
+ *   usingApi  ->  /api/*  (Neon Postgres, via the serverless functions in api/)
+ *   otherwise ->  localStorage (services/localStore.js, development only)
  *
- *   VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY present  ->  Supabase
- *   otherwise                                          ->  localStore
+ * The exported names and signatures are IDENTICAL on both paths, which is the
+ * whole point: a page never asks which backend is live. Swapping the backend is
+ * a configuration change, not a rewrite.
  *
- * Both are exported through the SAME names, so the UI never branches on the
- * backend. That is what lets the app be reviewed with no backend at all and
- * then switched to a real one without touching a single page.
+ * SECURITY
+ * The browser holds no database credential at all. Every read and write goes to
+ * a same-origin function that owns the connection string and, for anything that
+ * is not public by design, checks the session cookie first. There is no
+ * client-side "admin" flag to forge, and no anon key that can be replayed.
  *
- * Row Level Security does the access control here - the anon key is safe to
- * ship in the browser bundle because it can only read rows the policies allow.
- * Admin-only operations simply fail at the database if the caller is not an
- * admin; nothing in this file trusts the client.
+ * The two synchronous reads - getOrganization() and existingMemberIds() - are
+ * served from a warm cache on either backend. See the note on orgCache.
  */
 
 import {
@@ -36,355 +36,155 @@ import {
 
 import { organizationDefaults } from '../config/organization.default';
 import { toISODate, today } from '../utils/date';
-import { supabase, supabaseConfigured } from './supabase';
+import { api, usingApi, qs } from './api';
 
 /** True when reads and writes go to Postgres rather than localStorage. */
-export const usingSupabase = supabaseConfigured;
+export { usingApi };
 
 /* ==========================================================================
-   Row <-> app-object mapping
-   ==========================================================================
-   The database uses snake_case; the UI uses camelCase. Keeping the translation
-   in one place means a column rename touches this file only, not every page.
+   Organisation settings
    ========================================================================== */
 
-function toMember(row) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    memberId: row.member_id,
-    fullName: row.full_name,
-    designation: row.designation,
-    state: row.state,
-    district: row.district ?? '',
-    // The UI stores a ready-to-use URL. Storage objects live in a PRIVATE
-    // bucket, so the path is kept alongside and resolved on demand.
-    photoUrl: row.photo_url ?? null,
-    photoPath: row.photo_path ?? null,
-    validFrom: row.valid_from ?? '',
-    validUntil: row.valid_until ?? '',
-    status: row.status ?? 'active',
-    revocationReason: row.revocation_reason ?? null,
-    isDemo: false,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+/**
+ * Merge stored settings onto the defaults.
+ *
+ * A blank value means "not configured yet", NOT "the trust wants a blank here".
+ * Honouring '' wiped real defaults and put a DEMO DATA watermark on real cards,
+ * so only a value that carries something may replace a default.
+ */
+function applyOrganizationData(data) {
+  const next = { ...organizationDefaults };
+  if (!data || typeof data !== 'object') return next;
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined || value === null) continue;
+    if (typeof value === 'string' && value.trim() === '') continue;
+    next[key] = value;
+  }
+  // Settings saved from the real admin area are never demo data.
+  next.isDemo = false;
+  return next;
 }
 
 /**
- * Map an app object to column names.
+ * Cached organisation settings.
  *
- * `id` is deliberately excluded: it is the uuid primary key, assigned by the
- * database. Writing it back would either be ignored or, worse, silently move a
- * record to a different primary key.
+ * Seeded so reading is meaningful before any network call completes - the login
+ * page renders the trust's name and a QR verification page must not flash an
+ * empty heading. This is why getOrganization() stays SYNCHRONOUS even though a
+ * real backend exists: it is called from render paths in a dozen places, and
+ * making it async would mean rewriting every one of them.
  */
-function toColumns(data) {
-  const out = {};
-  const map = {
-    memberId: 'member_id',
-    fullName: 'full_name',
-    designation: 'designation',
-    state: 'state',
-    district: 'district',
-    photoUrl: 'photo_url',
-    photoPath: 'photo_path',
-    validFrom: 'valid_from',
-    validUntil: 'valid_until',
-    status: 'status',
-    revocationReason: 'revocation_reason',
-  };
-  for (const [key, column] of Object.entries(map)) {
-    if (data[key] !== undefined) out[column] = data[key];
-  }
-  // Dates must arrive as YYYY-MM-DD; a Date object would be rejected.
-  if (out.valid_from) out.valid_from = toISODate(out.valid_from);
-  if (out.valid_until) out.valid_until = toISODate(out.valid_until);
-  return out;
-}
+let orgCache = usingApi ? { ...organizationDefaults } : localGetOrganization();
 
-/**
- * Raise an error the UI can distinguish.
- *
- * The UI checks `err.code === 'DUPLICATE_ID'` to show "this number is already
- * issued" instead of a generic failure, so the code has to survive the trip
- * through PostgREST's error object.
- */
-function raise(message, code) {
-  const err = new Error(message);
-  if (code) err.code = code;
-  return err;
-}
+/** Member numbers already issued. Same caching rationale as orgCache. */
+let idsCache = localExistingMemberIds();
 
-/** Turn a PostgREST error into something the UI can act on. */
-function rethrow(error, context) {
-  const raw = String(error?.message ?? error ?? '');
-  if (error?.code === '23505' || /duplicate key|already exists/i.test(raw)) {
-    throw raise('duplicate', 'DUPLICATE_ID');
-  }
-  throw raise(`${context}: ${raw}`, error?.code);
-}
+/** The signed-in admin's uuid is no longer needed here - the API stamps it. */
 
 /* ==========================================================================
    Members
    ========================================================================== */
 
-async function sbListMembers() {
-  const { data, error } = await supabase
-    .from('members')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) rethrow(error, 'Could not load members');
-  return (data ?? []).map(toMember);
+async function apiListMembers() {
+  const { members } = await api.get('/members');
+  return members ?? [];
 }
 
-async function sbGetMember(memberId) {
-  const { data, error } = await supabase
-    .from('members')
-    .select('*')
-    .eq('member_id', memberId)
-    .maybeSingle();
-  if (error) rethrow(error, 'Could not load the member');
-  return toMember(data);
+async function apiGetMember(memberId) {
+  const { member } = await api.get(`/member${qs({ memberId })}`);
+  return member ?? null;
 }
 
-async function sbGetMemberByRowId(rowId) {
-  const { data, error } = await supabase
-    .from('members')
-    .select('*')
-    .eq('id', rowId)
-    .maybeSingle();
-  if (error) rethrow(error, 'Could not load the member');
-  return toMember(data);
+async function apiGetMemberByRowId(rowId) {
+  const { member } = await api.get(`/member-row${qs({ id: rowId })}`);
+  return member ?? null;
 }
 
-async function sbCreateMember(data) {
-  const row = {
-    ...toColumns(data),
-    // created_by ties the record to the signed-in admin. RLS allows the insert
-    // only if that admin row exists, so an unauthenticated caller is rejected
-    // by the database rather than by a check here.
-    created_by: (await currentAdminId()) ?? null,
-  };
-  // photoFile is a browser-side File handle; only the already-compressed
-  // data URL in photoUrl is meaningful to the database.
-  delete row.photoFile;
+async function apiCreateMember(data) {
+  // photoFile is a browser-side File handle; only the compressed data URL in
+  // photoUrl is meaningful to the database.
+  const payload = { ...data };
+  delete payload.photoFile;
+  if (payload.validFrom) payload.validFrom = toISODate(payload.validFrom);
+  if (payload.validUntil) payload.validUntil = toISODate(payload.validUntil);
 
-  const { data: created, error } = await supabase
-    .from('members')
-    .insert(row)
-    .select('*')
-    .single();
-  if (error) rethrow(error, 'Could not create the member');
-  return toMember(created);
+  const { member } = await api.post('/members', payload);
+  return member;
 }
 
-async function sbUpdateMember(rowId, patch) {
-  const { data, error } = await supabase
-    .from('members')
-    .update(toColumns(patch))
-    .eq('id', rowId)
-    .select('*')
-    .single();
-  if (error) rethrow(error, 'Could not update the member');
-  return toMember(data);
+async function apiUpdateMember(rowId, patch) {
+  const payload = { ...patch };
+  delete payload.photoFile;
+  if (payload.validFrom) payload.validFrom = toISODate(payload.validFrom);
+  if (payload.validUntil) payload.validUntil = toISODate(payload.validUntil);
+
+  const { member } = await api.patch(`/member-row${qs({ id: rowId })}`, payload);
+  return member;
 }
 
-async function sbDeleteMember(rowId) {
-  const { error } = await supabase.from('members').delete().eq('id', rowId);
-  if (error) rethrow(error, 'Could not delete the member');
-}
-
-/**
- * The signed-in admin's uuid, or null when there is no session.
- *
- * Returns null rather than throwing: creating a member must not be blocked by a
- * failed lookup - if the id cannot be resolved, RLS decides whether the insert
- * is allowed, which is the correct authority.
- */
-async function currentAdminId() {
-  const { data } = await supabase.auth.getUser();
-  return data?.user?.id ?? null;
+async function apiDeleteMember(rowId) {
+  await api.del(`/member-row${qs({ id: rowId })}`);
 }
 
 /* ==========================================================================
-   Organisation settings
-   ==========================================================================
-   The organization table is a single row (id = 1). Reads are public; writes are
-   admin-only per RLS.
+   Organisation settings - writes
    ========================================================================== */
 
-const ORG_MAP = {
-  name: 'organization_name',
-  nameHi: 'organization_name_hi',
-  registrationMark: 'registration_mark',
-  registrationText: 'registration_text',
-  registrationValue: 'registration_value',
-  trustNameEn: 'trust_name_en',
-  authorityText: 'authority_text',
-  isoText: 'iso_text',
-  logoUrl: 'logo_url',
-  sealUrl: 'seal_url',
-  signatureUrl: 'signature_url',
-  signatoryName: 'signatory_name',
-  signatoryDesignation: 'signatory_designation',
-  scopeText: 'scope_text',
-  supportText: 'support_text',
-  footerText: 'footer_text',
-  idPrefix: 'id_prefix',
-  idStart: 'id_start',
-  idPadding: 'id_padding',
-  defaultValidityMonths: 'default_validity_months',
-  qrEnabled: 'qr_enabled',
-  isDemo: 'is_demo',
-};
-
 /**
- * Merge one organization row onto the defaults.
+ * Save a settings patch.
  *
- * A column that is empty means "not configured yet", NOT "the trust wants a
- * blank here". Treating '' as a real value wiped good defaults: the database
- * ships with every text column at its '' default, so registration_text,
- * footer_text and signatory_name all overwrote the real values and the card
- * rendered with a blank footer and a DEMO DATA watermark.
- *
- * So only a value that carries something is allowed to replace a default.
+ * The server stores the whole configuration as one document, so the patch is
+ * merged onto what is already cached and the complete object is sent. Sending
+ * just the patch would blank every field the operator did not touch.
  */
-function applyOrganizationRow(row) {
-  const next = { ...organizationDefaults };
-  for (const [key, column] of Object.entries(ORG_MAP)) {
-    const value = row?.[column];
-    if (value === undefined || value === null) continue;
-    if (typeof value === 'string' && value.trim() === '') continue;
-    next[key] = value;
-  }
-  // A row that exists but has never been filled in is still demo data. The
-  // watermark stays on until is_demo is explicitly turned off.
-  if (row?.is_demo === false) next.isDemo = false;
-  return next;
-}
-
-/**
- * Seed value for the cache.
- *
- * With Supabase live, the DATABASE is the source of truth, so the cache starts
- * from the shipped defaults rather than from localStorage. Reading localStorage
- * here re-introduced a stale `isDemo: true` left by an early development
- * session, which put a DEMO DATA watermark on real cards.
- *
- * With no backend, localStorage is all there is, so it is used.
- */
-const seedOrganization = () => (supabaseConfigured ? organizationDefaults : localGetOrganization());
-
-/**
- * Cached organisation settings.
- *
- * Seeded so that reading is meaningful before any network call completes - a
- * login page that renders the trust's name cannot afford to wait for a round
- * trip. `hydrateStores()` replaces it with the database row as soon as that
- * arrives.
- *
- * This is why getOrganization() stays SYNCHRONOUS even when Supabase is live.
- * It is called from render paths in thirteen places; making it async would mean
- * rewriting every one of them and, worse, would make the card flash empty on
- * every load. A synchronous read of a warmed cache is the cheaper trade.
- */
-let orgCache = seedOrganization();
-
-/** Member numbers already issued. Same caching rationale as orgCache. */
-let idsCache = localExistingMemberIds();
-
-function getOrganization() {
+async function apiSaveOrganization(patch) {
+  const next = { ...orgCache, ...patch, isDemo: false };
+  const { data } = await api.put('/organization', { data: next });
+  orgCache = applyOrganizationData(data);
   return orgCache;
-}
-
-async function sbSaveOrganization(patch) {
-  const row = { id: 1, is_demo: false };
-  for (const [key, value] of Object.entries(patch)) {
-    const column = ORG_MAP[key];
-    if (column && value !== undefined) row[column] = value;
-  }
-  const { data, error } = await supabase
-    .from('organization')
-    .upsert(row, { onConflict: 'id' })
-    .select('*')
-    .single();
-  if (error) rethrow(error, 'Could not save settings');
-  const next = applyOrganizationRow(data);
-  next.isDemo = false;
-  orgCache = next;
-  return next;
 }
 
 /**
  * Public lookup for the QR verification page.
  *
- * MUST read `public_members`, not `members`. The members table is admin-only
- * under RLS, so an anonymous visitor scanning a QR would get an RLS error and
- * the page would report NOT FOUND for a perfectly valid card. public_members is
- * the curated, world-readable view built for exactly this.
- *
- * The returned shape deliberately omits revocation_reason, photo and district -
- * those are the organisation's records, not a stranger's business.
+ * Unauthenticated by design - a person scanning a card has no account. The
+ * server returns a strict subset of the record (no photo, no revocation note).
  */
-async function sbGetPublicMember(memberId) {
-  const { data, error } = await supabase
-    .from('public_members')
-    .select('*')
-    .eq('member_id', memberId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) return null;
+async function apiGetPublicMember(memberId) {
+  const { member } = await api.get(`/public-member${qs({ memberId })}`);
+  return member ?? null;
+}
 
-  return {
-    id: null,
-    memberId: data.member_id,
-    fullName: data.full_name,
-    designation: data.designation,
-    state: data.state,
-    validUntil: data.valid_until,
-    status: data.effective_status,
-    organizationName: data.organization_name,
-    isPublic: true,
-  };
+/* ==========================================================================
+   Caches
+   ========================================================================== */
+
+async function apiExistingMemberIds() {
+  const { memberIds } = await api.get('/member-ids');
+  return memberIds ?? [];
 }
 
 /**
- * Every issued member number.
- *
- * Read from public_members rather than members: the members table is admin-only,
- * and the public form needs this list to suggest the next free number without a
- * session. Only the numbers are exposed - no names, no photos.
- */
-async function sbExistingMemberIds() {
-  const { data, error } = await supabase.from('public_members').select('member_id');
-  if (error) return localExistingMemberIds();
-  return (data ?? []).map((r) => r.member_id);
-}
-
-/**
- * Pull the organisation row and the issued member numbers into the caches.
- *
- * Called once when the app mounts. Everything that reads getOrganization() or
- * existingMemberIds() synchronously afterwards is therefore already correct.
+ * Pull the organisation document and the issued member numbers into the caches.
+ * Called once when the app mounts, so every later synchronous read is correct.
  */
 export async function hydrateStores() {
-  if (!usingSupabase) return;
+  if (!usingApi) return;
 
-  const [org, ids] = await Promise.all([
-    supabase.from('organization').select('*').eq('id', 1).maybeSingle(),
-    supabase.from('public_members').select('member_id'),
+  const [org, ids] = await Promise.allSettled([
+    api.get('/organization'),
+    apiExistingMemberIds(),
   ]);
 
-  if (!org.error && org.data) {
-    orgCache = applyOrganizationRow(org.data);
+  if (org.status === 'fulfilled' && org.value?.data) {
+    orgCache = applyOrganizationData(org.value.data);
   }
-
-  if (!ids.error && ids.data) {
-    idsCache = ids.data.map((r) => r.member_id);
+  if (ids.status === 'fulfilled') {
+    idsCache = ids.value;
   }
 }
 
-/** Synchronous, cached. See the note on orgCache above. */
+/** Synchronous, cached. See the note on orgCache. */
 export function existingMemberIds() {
   return idsCache;
 }
@@ -394,31 +194,28 @@ export function existingMemberIds() {
  * that was just issued instead of offering it again.
  */
 export async function refreshMemberIds() {
-  if (!usingSupabase) return localExistingMemberIds();
-  return sbExistingMemberIds().then((ids) => {
-    idsCache = ids;
-    return ids;
-  });
+  if (!usingApi) return localExistingMemberIds();
+  const ids = await apiExistingMemberIds();
+  idsCache = ids;
+  return ids;
 }
 
 /* ==========================================================================
    Public export
-   ==========================================================================
-   Signatures are identical across both backends. The two synchronous reads
-   (getOrganization, existingMemberIds) are served from cache on either backend,
-   so no call site has to know which one is live.
    ========================================================================== */
 
-export const listMembers = usingSupabase ? sbListMembers : localListMembers;
-export const getMember = usingSupabase ? sbGetMember : localGetMember;
-export const getMemberByRowId = usingSupabase ? sbGetMemberByRowId : localGetMemberByRowId;
-export const createMember = usingSupabase ? sbCreateMember : localCreateMember;
-export const updateMember = usingSupabase ? sbUpdateMember : localUpdateMember;
-export const deleteMember = usingSupabase ? sbDeleteMember : localDeleteMember;
-export const saveOrganization = usingSupabase ? sbSaveOrganization : localSaveOrganization;
-export const getPublicMember = usingSupabase ? sbGetPublicMember : localGetMember;
+export function getOrganization() {
+  return orgCache;
+}
 
-export { getOrganization };
+export const listMembers = usingApi ? apiListMembers : localListMembers;
+export const getMember = usingApi ? apiGetMember : localGetMember;
+export const getMemberByRowId = usingApi ? apiGetMemberByRowId : localGetMemberByRowId;
+export const createMember = usingApi ? apiCreateMember : localCreateMember;
+export const updateMember = usingApi ? apiUpdateMember : localUpdateMember;
+export const deleteMember = usingApi ? apiDeleteMember : localDeleteMember;
+export const saveOrganization = usingApi ? apiSaveOrganization : localSaveOrganization;
+export const getPublicMember = usingApi ? apiGetPublicMember : localGetMember;
 
 /** Clear the caches back to whatever localStorage holds (development helper). */
 export function resetOrganization() {
@@ -429,8 +226,8 @@ export function resetOrganization() {
 /*
  * Renew and revoke are expressed as an update of status/validity, so they are
  * built on whichever updateMember is live rather than duplicated per backend.
- * Renewing a revoked ID must not silently reinstate it - that rule is the
- * organisation's, not the storage layer's, so it is applied here.
+ * Renewing a revoked ID must not silently reinstate it - that rule belongs to
+ * the organisation, not the storage layer, so it is applied here.
  */
 export async function renewMember(rowId, validUntil) {
   const current = await getMemberByRowId(rowId);
@@ -447,22 +244,17 @@ export function revokeMember(rowId, reason) {
 }
 
 export async function checkMemberIdAvailable(memberId, exceptRowId = null) {
-  if (!usingSupabase) {
-    const found = await localGetMember(memberId);
+  try {
+    const found = await getMember(memberId);
     return !found || found.id === exceptRowId;
+  } catch {
+    // On error, allow the attempt through rather than blocking a legitimate
+    // number - the unique constraint is the real authority and will reject it.
+    return true;
   }
-  const { data, error } = await supabase
-    .from('members')
-    .select('id')
-    .eq('member_id', memberId)
-    .maybeSingle();
-  // On error, allow the attempt through rather than blocking a legitimate
-  // number - the unique constraint is the real authority and will reject it.
-  if (error) return true;
-  return !data || data.id === exceptRowId;
 }
 
-/** Wipe the local demo data. Meaningless when Supabase is live. */
+/** Wipe the local demo data. Meaningless when a real backend is live. */
 export function resetDemoData() {
   return localResetDemoData();
 }

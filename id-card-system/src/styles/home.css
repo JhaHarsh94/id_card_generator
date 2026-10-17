@@ -1,0 +1,517 @@
+/* ===========================================================================
+ * HOME / LANDING PAGE
+ * ---------------------------------------------------------------------------
+ * Two colours carry the identity and both have to be visible at a glance:
+ * brand blue (structure, headings, primary text) and brand red (accent, the
+ * CTA). Gold appears exactly once - as the rule under the hero title - so it
+ * reads as an emblem rather than a third scheme colour.
+ *
+ * Layout is a single centred column that widens only for the contact block.
+ * Nothing here can overflow horizontally: every grid uses minmax(0, ...) so a
+ * long address or phone number shrinks its cell instead of pushing the page
+ * wider than the phone.
+ * =========================================================================== */
+
+.home {
+  --home-blue: var(--brand-blue);
+  --home-blue-deep: var(--brand-blue-700);
+  --home-red: var(--brand-red);
+  min-height: 100vh;
+  background: var(--ink-50);
+  color: var(--ink-800);
+  display: flex;
+  flex-direction: column;
+}
+
+.home *,
+.home *::before,
+.home *::after {
+  box-sizing: border-box;
+}
+
+.home__wrap {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--sp-5);
+}
+
+/* ---------------------------------------------------------------- TOP BAR */
+
+.home__bar {
+  background: #fff;
+  border-bottom: 1px solid var(--ink-200);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.home__bar-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--sp-3) var(--sp-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.home__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.home__brand-logo {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  object-fit: contain;
+}
+
+.home__brand-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--home-blue);
+  line-height: 1.25;
+}
+
+.home__brand-name-en {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-500);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+
+.home__bar-link {
+  flex: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--home-red);
+  text-decoration: none;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1.5px solid var(--home-red);
+  border-radius: var(--r-full);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.home__bar-link:hover {
+  background: var(--home-red);
+  color: #fff;
+}
+
+/* ------------------------------------------------------------------- HERO */
+
+.home__hero {
+  background:
+    radial-gradient(1100px 420px at 15% -10%, rgba(43, 52, 143, 0.55), transparent 60%),
+    linear-gradient(160deg, var(--home-blue-deep) 0%, var(--home-blue) 55%, #0d1450 100%);
+  color: #fff;
+  padding: var(--sp-12) 0 var(--sp-12);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Thin red rule across the very top of the hero - keeps the second brand
+   colour present even before the visitor scrolls. */
+.home__hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  background: linear-gradient(90deg, var(--home-red) 0%, var(--home-red) 45%, #f0c23c 100%);
+}
+
+.home__hero-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 var(--sp-5);
+  text-align: center;
+}
+
+.home__eyebrow {
+  margin: 0 0 var(--sp-4);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #f0c23c;
+}
+
+.home__title {
+  margin: 0;
+  font-size: clamp(28px, 5.2vw, 46px);
+  font-weight: 900;
+  line-height: 1.18;
+  color: #f0c23c;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.home__title-en {
+  margin: var(--sp-3) 0 0;
+  font-size: clamp(13px, 2vw, 16px);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.home__authority {
+  margin: var(--sp-4) 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* The single gold rule: emblem, not decoration. */
+.home__hero-inner::after {
+  content: '';
+  display: block;
+  width: 96px;
+  height: 3px;
+  margin: var(--sp-6) auto 0;
+  background: #f0c23c;
+  border-radius: 2px;
+}
+
+.home__lede {
+  margin: var(--sp-6) auto 0;
+  max-width: 640px;
+  font-size: clamp(15px, 2.2vw, 17px);
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.home__cta {
+  margin-top: var(--sp-8);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  justify-content: center;
+}
+
+.home__btn {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  padding: 14px 30px;
+  border-radius: var(--r-full);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease;
+}
+
+.home__btn--primary {
+  background: var(--home-red);
+  color: #fff;
+  border: 2px solid var(--home-red);
+  box-shadow: 0 8px 22px rgba(229, 60, 72, 0.4);
+}
+
+.home__btn--primary:hover {
+  background: var(--home-red-700);
+  border-color: var(--home-red-700);
+  transform: translateY(-2px);
+}
+
+.home__btn--ghost {
+  background: transparent;
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+}
+
+.home__btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #fff;
+  transform: translateY(-2px);
+}
+
+.home__scope {
+  margin: var(--sp-8) 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* --------------------------------------------------------------- SECTIONS */
+
+.home__section {
+  padding: var(--sp-12) 0;
+}
+
+.home__section--alt {
+  background: #fff;
+  border-top: 1px solid var(--ink-200);
+  border-bottom: 1px solid var(--ink-200);
+}
+
+.home__section--verify {
+  background: var(--brand-blue-50);
+}
+
+.home__h2 {
+  margin: 0 0 var(--sp-4);
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 900;
+  color: var(--home-blue);
+}
+
+.home__note {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-600);
+  max-width: 640px;
+}
+
+/* ------------------------------------------------------------------ VERIFY */
+
+.home__verify {
+  text-align: center;
+}
+
+.home__verify .home__note {
+  margin: 0 auto;
+}
+
+.home__lookup {
+  margin-top: var(--sp-6);
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.home__lookup-input {
+  flex: 1 1 260px;
+  max-width: 340px;
+  min-width: 0;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 13px 18px;
+  border: 2px solid var(--ink-300);
+  border-radius: var(--r-full);
+  background: #fff;
+  color: var(--ink-900);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home__lookup-input:focus {
+  border-color: var(--home-blue);
+  box-shadow: 0 0 0 4px rgba(23, 31, 115, 0.14);
+}
+
+.home__lookup-input::placeholder {
+  color: var(--ink-400);
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------ SUPPORT */
+
+.home__support {
+  margin: 0;
+  max-width: 760px;
+  font-size: clamp(15px, 2.2vw, 18px);
+  line-height: 1.8;
+  color: var(--ink-700);
+}
+
+/* ------------------------------------------------------------------- STEPS */
+
+.home__steps {
+  list-style: none;
+  margin: var(--sp-6) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-5);
+}
+
+.home__step {
+  background: var(--ink-50);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6) var(--sp-5);
+  min-width: 0;
+}
+
+.home__step-n {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--home-red);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.home__step-title {
+  margin: var(--sp-4) 0 var(--sp-2);
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--home-blue);
+}
+
+.home__step-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink-600);
+}
+
+/* ----------------------------------------------------------------- CONTACT */
+
+.home__contact {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--sp-5);
+  align-items: stretch;
+}
+
+.home__contact-card {
+  background: #fff;
+  border: 1px solid var(--ink-200);
+  border-left: 5px solid var(--home-blue);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  min-width: 0;
+}
+
+.home__contact-card--sign {
+  border-left-color: var(--home-red);
+  text-align: center;
+}
+
+.home__contact-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.home__contact-line {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--ink-700);
+  overflow-wrap: anywhere;
+}
+
+/* The contact-number line needs air above it so it does not read as one more
+   line of the address. */
+.home__contact-line--phone {
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px dashed var(--ink-300);
+  color: var(--home-red);
+}
+
+.home__sign-name {
+  margin: var(--sp-2) 0 0;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--home-blue);
+  overflow-wrap: anywhere;
+}
+
+.home__sign-role {
+  margin: var(--sp-1) 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--home-red);
+}
+
+/* ----------------------------------------------------------------- FOOTER */
+
+.home__foot {
+  margin-top: auto;
+  background: linear-gradient(90deg, var(--home-blue) 0%, var(--home-red) 100%);
+  color: #fff;
+  padding: var(--sp-6) 0;
+}
+
+.home__foot-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.home__foot-org {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.home__foot-reg {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.home__foot-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ------------------------------------------------------------- RESPONSIVE */
+
+@media (max-width: 900px) {
+  .home__steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home__contact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home__hero {
+    padding: var(--sp-10) 0 var(--sp-10);
+  }
+
+  .home__section {
+    padding: var(--sp-8) 0;
+  }
+
+  .home__btn {
+    width: 100%;
+    max-width: 340px;
+  }
+}
+
+@media (max-width: 560px) {
+  .home__brand-name {
+    font-size: 13px;
+  }
+
+  .home__brand-name-en {
+    display: none;
+  }
+
+  .home__bar-link {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .home__foot-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+}

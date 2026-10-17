@@ -1,9 +1,109 @@
 import { useEffect, useRef, useState } from 'react';
-import { Save, RotateCcw, Building2, Hash, QrCode, CheckCircle2, AlertCircle, Upload, Trash2 } from 'lucide-react';
+import { Save, RotateCcw, Building2, Hash, QrCode, CheckCircle2, AlertCircle, Upload, Trash2, KeyRound, ShieldCheck } from 'lucide-react';
 import { getOrganization, saveOrganization, resetOrganization, listMembers } from '../services/members';
+import { changePassword } from '../services/auth';
+import { usingApi } from '../services/api';
 import { suggestNextId } from '../utils/idGenerator';
 import CardStage from '../components/CardStage';
-import '../styles/settings.css';
+import PageHeader from '../components/admin/PageHeader';
+
+/**
+ * SecurityCard
+ * ---------------------------------------------------------------------------
+ * Change the signed-in administrator's own password.
+ *
+ * The current password is demanded even though the caller already holds a
+ * session: a session proves the browser was signed in, not that the person at
+ * the keyboard owns the account, and this is the one action that would let an
+ * attacker take an account over permanently.
+ *
+ * Hidden entirely in local mode - there is no server to change a password on.
+ */
+function SecurityCard() {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [banner, setBanner] = useState(null);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (busy) return;
+    setBanner(null);
+
+    if (next !== confirm) {
+      setBanner({ kind: 'error', text: 'The two new passwords do not match.' });
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const result = await changePassword(current, next);
+      if (result.ok) {
+        setBanner({ kind: 'ok', text: 'Password changed. Use it the next time you sign in.' });
+        setCurrent('');
+        setNext('');
+        setConfirm('');
+      } else {
+        setBanner({ kind: 'error', text: result.error });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="card" onSubmit={handleSubmit}>
+      <div className="card-head">
+        <h2 className="h3"><ShieldCheck size={17} /> Security</h2>
+      </div>
+      <div className="card-body stack gap-4">
+        {banner ? (
+          <div className={`banner banner-${banner.kind}`} role="alert">
+            {banner.kind === 'ok' ? <CheckCircle2 size={17} /> : <AlertCircle size={17} />}
+            <span>{banner.text}</span>
+          </div>
+        ) : null}
+
+        <div className="form-grid">
+          <div className="field span-2">
+            <label className="label" htmlFor="pw-current">Current password</label>
+            <input
+              id="pw-current" type="password" className="input" value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              autoComplete="current-password" required disabled={busy}
+            />
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="pw-new">New password</label>
+            <input
+              id="pw-new" type="password" className="input" value={next}
+              onChange={(e) => setNext(e.target.value)}
+              autoComplete="new-password" required disabled={busy}
+            />
+            <span className="field-hint">At least 10 characters, with upper and lower case and a number.</span>
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="pw-confirm">Confirm new password</label>
+            <input
+              id="pw-confirm" type="password" className="input" value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password" required disabled={busy}
+            />
+          </div>
+        </div>
+
+        <div className="row gap-3 wrap">
+          <button type="submit" className="btn btn-secondary" disabled={busy}>
+            {busy ? <><span className="spinner" /> Updating&hellip;</> : <><KeyRound size={16} /> Change password</>}
+          </button>
+          <span className="field-hint">Signing in elsewhere with the old password will stop working.</span>
+        </div>
+      </div>
+    </form>
+  );
+}
+
 
 /**
  * Settings
@@ -99,6 +199,7 @@ export default function Settings() {
     name: 'सदस्य का नाम',
     designation: 'पद',
     state: 'राज्य',
+    district: 'जिला',
     memberId: nextId || '0000000',
     validUntil: '',
     photoUrl: null,
@@ -106,15 +207,11 @@ export default function Settings() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <h1 className="h1">Settings</h1>
-          <p className="page-sub">
-            Organisation details entered once, applied to every card. The card layout
-            itself is locked and cannot be changed here.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Settings"
+        sub="Organisation details entered once, applied to every card. The card layout itself is locked and cannot be changed here."
+        trail={[{ label: 'Settings' }]}
+      />
 
       {banner ? (
         <div className={`banner banner-${banner.kind}`} role="alert">
@@ -126,6 +223,7 @@ export default function Settings() {
       ) : null}
 
       <div className="settings-grid">
+        <div className="stack gap-4">
         <form className="stack gap-4" onSubmit={handleSave}>
           {/* ---- organisation ---- */}
           <section className="card">
@@ -269,6 +367,9 @@ export default function Settings() {
             </button>
           </div>
         </form>
+
+        {usingApi ? <SecurityCard /> : null}
+        </div>
 
         {/* ---- preview ---- */}
         <aside className="settings-preview">

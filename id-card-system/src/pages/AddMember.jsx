@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Save, IdCard, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Save, IdCard, CheckCircle2, AlertCircle } from 'lucide-react';
 import MemberForm from '../components/MemberForm';
 import CardStage from '../components/CardStage';
+import PageHeader from '../components/admin/PageHeader';
 import organizationDefaults from '../config/organization.default';
 import { validateMemberForm } from '../utils/validation';
 import { addMonths, toISODate, today } from '../utils/date';
@@ -51,6 +52,7 @@ export default function AddMember({ organization = organizationDefaults }) {
     name: values.fullName,
     designation: values.designation,
     state: values.state,
+    district: values.district,
     memberId: values.memberId,
     validUntil: values.validUntil,
     photoUrl: values.photoUrl,
@@ -91,7 +93,7 @@ export default function AddMember({ organization = organizationDefaults }) {
         status: values.status,
         revocationReason: values.revocationReason?.trim() || null,
       });
-      navigate(`/members/${encodeURIComponent(saved.memberId)}?created=1`);
+      navigate(`/admin/members/${encodeURIComponent(saved.memberId)}?created=1`);
     } catch (err) {
       if (err?.code === 'DUPLICATE_ID') {
         setErrors({ memberId: 'That ID number is already assigned.' });
@@ -109,23 +111,11 @@ export default function AddMember({ organization = organizationDefaults }) {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <Link
-            to="/"
-            className="btn btn-ghost btn-sm"
-            style={{ marginLeft: -12, marginBottom: 6 }}
-          >
-            <ArrowLeft size={15} />
-            Back to dashboard
-          </Link>
-          <h1 className="h1">Add new member</h1>
-          <p className="page-sub">
-            Enter the member&rsquo;s details and upload a photograph. The ID card and QR
-            code are generated automatically from the fixed template.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Add new member"
+        sub="Enter the member’s details and upload a photograph. The ID card and QR code are generated automatically from the fixed template."
+        trail={[{ label: 'Members', to: '/admin/members' }, { label: 'Add member' }]}
+      />
 
       {banner ? (
         <div className={`banner banner-${banner.kind}`} role="alert">
@@ -182,7 +172,7 @@ export default function AddMember({ organization = organizationDefaults }) {
               Generate ID card
             </button>
 
-            <Link to="/" className="btn btn-ghost btn-lg">Cancel</Link>
+            <Link to="/admin/members" className="btn btn-ghost btn-lg">Cancel</Link>
           </div>
         </form>
 

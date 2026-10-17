@@ -1,23 +1,21 @@
 /**
  * Authentication service.
  * ---------------------------------------------------------------------------
- * Two backends behind one interface:
+ * One interface, two backends:
  *
- *   Supabase Auth  - used as soon as VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
- *                    are present. This is the production path.
+ *   usingApi  ->  /api/auth/*  against Neon. Sessions live in an httpOnly
+ *                 cookie that the browser cannot read or forge; passwords are
+ *                 verified server-side with scrypt.
  *
- *   Local fallback - used only for development before a project is connected.
- *                    Credentials are held in localStorage and the password is
- *                    compared as a SHA-256 digest, never as plaintext.
+ *   otherwise ->  the local development fallback: users in localStorage with a
+ *                 SHA-256 digest. NOT production security (devtools can read
+ *                 it), which is exactly why it is never used in a built app.
  *
- * The UI never knows which one is active, so connecting Supabase later is a
- * configuration change rather than a code change.
- *
- * The fallback is NOT production security: anyone with devtools can read
- * localStorage. It exists so the login flow can be built and reviewed now.
+ * The UI never learns which one is live, so moving to a real backend stayed a
+ * configuration change rather than a rewrite.
  */
 
-import { supabase, supabaseConfigured } from './supabase';
+import { api, usingApi } from './api';
 
 const SESSION_KEY = 'idcms.session';
 const USERS_KEY = 'idcms.admins';
@@ -40,7 +38,7 @@ async function sha256(text) {
 }
 
 /* ==========================================================================
-   Local fallback store
+   Local fallback store (development only)
    ========================================================================== */
 
 function localUsers() {
@@ -80,10 +78,6 @@ function writeLocalSession(session) {
    Public API
    ========================================================================== */
 
-export function usingSupabase() {
-  return supabaseConfigured;
-}
-
 /**
  * Sign in.
  * @returns {{ ok: true, user: object } | { ok: false, error: string }}
@@ -99,24 +93,14 @@ export async function signIn(email, password) {
     return { ok: false, error: 'Enter your password.' };
   }
 
-  if (supabaseConfigured) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: address,
-      password,
-    });
-    if (error) {
+  if (usingApi) {
+    try {
+      const { user } = await api.post('/auth/login', { email: address, password });
+      return { ok: true, user };
+    } catch (err) {
       // Deliberately vague: never reveal whether the email exists.
-      return { ok: false, error: 'Email or password is incorrect.' };
+      return { ok: false, error: err?.message ?? 'Email or password is incorrect.' };
     }
-    return {
-      ok: true,
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.user_metadata?.name ?? address,
-        role: data.user.user_metadata?.role ?? 'administrator',
-      },
-    };
   }
 
   await ensureDemoUser();
@@ -134,8 +118,13 @@ export async function signIn(email, password) {
 }
 
 export async function signOut() {
-  if (supabaseConfigured) {
-    await supabase.auth.signOut();
+  if (usingApi) {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // The cookie is cleared server-side; a network blip must not trap the
+      // user in a signed-in-looking shell.
+    }
     return { ok: true };
   }
   writeLocalSession(null);
@@ -144,59 +133,62 @@ export async function signOut() {
 
 /** Current session user, or null. */
 export async function getSession() {
-  if (supabaseConfigured) {
-    const { data } = await supabase.auth.getSession();
-    const user = data?.session?.user;
-    if (!user) return null;
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.user_metadata?.name ?? user.email,
-      role: user.user_metadata?.role ?? 'administrator',
-    };
+  if (usingApi) {
+    try {
+      const { user } = await api.get('/auth/session');
+      return user ?? null;
+    } catch {
+      // A backend outage resolves to anonymous, which locks the admin area
+      // down rather than exposing it.
+      return null;
+    }
   }
   return localSession()?.user ?? null;
 }
 
-/** Subscribe to auth changes (sign-in, sign-out, token refresh). */
-export function onAuthChange(handler) {
-  if (supabaseConfigured) {
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      handler(
-        session
-          ? {
-            id: session.user.id,
-            email: session.user.email,
-            name: session.user.user_metadata?.name ?? session.user.email,
-            role: session.user.user_metadata?.role ?? 'administrator',
-          }
-          : null,
-      );
-    });
-    return () => data.subscription.unsubscribe();
+/**
+ * Change the signed-in administrator's password.
+ * Requires the current password - a live session proves the browser was signed
+ * in, not that the person at the keyboard owns the account.
+ */
+export async function changePassword(currentPassword, newPassword) {
+  if (!usingApi) return { ok: false, error: 'Not available in local mode.' };
+  try {
+    await api.post('/auth/password', { currentPassword, newPassword });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err?.message ?? 'Could not change the password.' };
   }
+}
+
+/**
+ * Subscribe to auth changes.
+ *
+ * Cookie sessions have no push channel, so nothing needs to be observed: the
+ * provider already owns the state and updates it on sign-in and sign-out. The
+ * local fallback needs no subscription either. Returning a no-op unsubscribe
+ * keeps the provider's shape identical.
+ */
+export function onAuthChange() {
   return () => {};
 }
 
 /**
- * Start a password reset.
- * Always reports success, whether or not the address exists - telling an
- * anonymous caller which emails are registered would leak account data.
+ * Password resets.
+ *
+ * There is no mailer wired to this deployment, so a self-service reset would be
+ * a promise the system cannot keep. The sign-in screen points people at the
+ * administrator instead; this stays so the page has a stable contract.
  */
 export async function requestPasswordReset(email) {
   const address = String(email ?? '').trim();
   if (!address.includes('@')) {
     return { ok: false, error: 'Enter a valid email address.' };
   }
-  if (supabaseConfigured) {
-    await supabase.auth.resetPasswordForEmail(address, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-  }
   return { ok: true };
 }
 
 /** The demo credential, surfaced on the login page in local mode only. */
 export function demoCredential() {
-  return supabaseConfigured ? null : { email: DEMO_ADMIN.email, password: 'demo1234' };
+  return usingApi ? null : { email: DEMO_ADMIN.email, password: 'demo1234' };
 }

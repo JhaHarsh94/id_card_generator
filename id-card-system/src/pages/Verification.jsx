@@ -5,6 +5,7 @@ import { getMember, listMembers, getOrganization } from '../services/members';
 import { deriveStatus } from '../utils/status';
 import { formatDate } from '../utils/date';
 import StatusBadge from '../components/StatusBadge';
+import PageHeader from '../components/admin/PageHeader';
 
 /**
  * Verification (admin-side helper)
@@ -47,15 +48,11 @@ export default function Verification() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <h1 className="h1">Verification</h1>
-          <p className="page-sub">
-            Look up any ID number to see its live status. The same information is
-            public at <code>/verify/&lt;id&gt;</code>.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Verification"
+        sub="Look up any ID number to see its live status. The same information is public at /verify/:id."
+        trail={[{ label: 'Verification' }]}
+      />
 
       <div className="card">
         <div className="card-body">
@@ -96,7 +93,7 @@ export default function Verification() {
                 <div><dt>Valid up to</dt><dd className="text-mono">{formatDate(result.validUntil)}</dd></div>
               </dl>
               <div className="row gap-2" style={{ marginTop: 14 }}>
-                <Link to={`/members/${encodeURIComponent(result.memberId)}`} className="btn btn-secondary btn-sm">
+                <Link to={`/admin/members/${encodeURIComponent(result.memberId)}`} className="btn btn-secondary btn-sm">
                   <ShieldCheck size={15} /> Open member record
                 </Link>
                 <a
@@ -128,7 +125,7 @@ export default function Verification() {
                 {recent.map((m) => (
                   <tr key={m.id}>
                     <td className="text-mono">
-                      <Link to={`/members/${encodeURIComponent(m.memberId)}`}>{m.memberId}</Link>
+                      <Link to={`/admin/members/${encodeURIComponent(m.memberId)}`}>{m.memberId}</Link>
                     </td>
                     <td style={{ fontWeight: 600 }}>{m.fullName}</td>
                     <td>{m.designation}</td>
@@ -144,7 +141,18 @@ export default function Verification() {
 
       <p className="text-muted text-sm">
         Organisation: {organization.name}.{' '}
-        <Link to="/verify/0095030">Open the public verification page</Link>
+        {result ? (
+          /*
+           * Only offered once there is a real member to open. The previous
+           * version hard-coded a demonstration number, which sent anyone who
+           * clicked it to a NOT FOUND page and read as a broken feature.
+           */
+          <Link to={`/verify/${encodeURIComponent(result.memberId)}`}>
+            Open the public verification page for {result.memberId}
+          </Link>
+        ) : (
+          'Search an ID number above to see the public page a QR scan opens.'
+        )}
       </p>
     </div>
   );

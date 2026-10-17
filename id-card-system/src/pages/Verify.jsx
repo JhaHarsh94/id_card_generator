@@ -165,6 +165,12 @@ export default function Verify() {
                     <dt><MapPin size={14} /> State</dt>
                     <dd>{member.state}</dd>
                   </div>
+                  {member.district ? (
+                    <div>
+                      <dt><MapPin size={14} /> District</dt>
+                      <dd>{member.district}</dd>
+                    </div>
+                  ) : null}
                   <div>
                     <dt><IdCardIcon size={14} /> ID Number</dt>
                     <dd className="text-mono">{member.memberId}</dd>

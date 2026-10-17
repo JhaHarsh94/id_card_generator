@@ -17,12 +17,43 @@
   background: var(--brand-blue);
 }
 
+/*
+ * The bar spans the full width so the blue bleeds edge to edge, but its
+ * contents are held to the same 1080px column as the form below it - otherwise
+ * the brand and the back link drift to the extreme corners of a wide monitor.
+ */
+.simple__top-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.simple__home-link {
+  flex: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+  padding: 6px 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--r-full);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.simple__home-link:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: #fff;
+}
+
 .simple__brand {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  max-width: 1080px;
-  margin: 0 auto;
+  min-width: 0;
 }
 
 .simple__brand img {
@@ -41,6 +72,9 @@
   font-size: 15px;
   font-weight: 700;
   line-height: 1.25;
+  /* The organisation name is long and the header is now a flex row, so it must
+     be allowed to wrap inside its own column rather than widen the row. */
+  overflow-wrap: break-word;
 }
 
 .simple__org-sub {

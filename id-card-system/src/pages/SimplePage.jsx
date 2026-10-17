@@ -193,12 +193,19 @@ export default function SimplePage() {
     <div className="simple">
       {/* ---- header ---- */}
       <header className="simple__top">
-        <div className="simple__brand">
-          {organization.logoUrl ? <img src={organization.logoUrl} alt="" /> : null}
-          <span>
-            <span className="simple__org">{organization.name}</span>
-            <span className="simple__org-sub">ID Card</span>
-          </span>
+        <div className="simple__top-inner">
+          <div className="simple__brand">
+            {organization.logoUrl ? <img src={organization.logoUrl} alt="" /> : null}
+            <span>
+              <span className="simple__org">{organization.name}</span>
+              <span className="simple__org-sub">ID Card</span>
+            </span>
+          </div>
+          {/* The generator now lives at /generate rather than at the root, so it
+              needs a visible way back to the landing page - otherwise a visitor
+              who lands here from a bookmark has no route to the organisation's
+              own pages. */}
+          <Link to="/" className="simple__home-link">← मुख्य पृष्ठ</Link>
         </div>
       </header>
 
@@ -327,6 +334,7 @@ export default function SimplePage() {
                   name: values.fullName,
                   designation: values.designation,
                   state: values.state,
+                  district: values.district,
                   memberId: values.memberId,
                   validUntil: values.validUntil,
                   photoUrl: values.photoUrl,

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/auth-context';
 import { getOrganization } from '../services/members';
-import { demoCredential, usingSupabase } from '../services/auth';
+import { demoCredential } from '../services/auth';
 import '../styles/auth.css';
 
 /**
@@ -31,8 +31,23 @@ export default function Login() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
+  /*
+   * Where to land after signing in.
+   *
+   * The application is administrator-only, so there is no useful public home
+   * page to return to - and a visitor who was turned away at "/" arrives with
+   * `from` set to "/", which would send them straight back to the page that
+   * bounced them. A deep link to a specific page is still honoured, because
+   * that is what an operator shared or bookmarked; only "/" and "no origin at
+   * all" fall through to the dashboard.
+   */
+  const from = location.state?.from;
+  const landing = typeof from === 'string' && from.startsWith('/') && from !== '/'
+    ? from
+    : '/admin';
+
   if (!isLoading && isAuthenticated) {
-    return <Navigate to={location.state?.from ?? '/'} replace />;
+    return <Navigate to={landing} replace />;
   }
 
   async function handleSubmit(event) {
@@ -45,7 +60,7 @@ export default function Login() {
     try {
       const result = await login(email, password);
       if (result.ok) {
-        navigate(location.state?.from ?? '/', { replace: true });
+        navigate(landing, { replace: true });
       } else {
         setError(result.error);
       }
@@ -184,23 +199,18 @@ export default function Login() {
           </form>
 
           {demo ? (
+            /*
+             * Local development only. demoCredential() returns null when the app
+             * is talking to the API, so a production build never renders this.
+             * The credential is worthless even here: it only exists so the login
+             * flow can be built and reviewed before a real account exists.
+             */
             <div className="auth__demo">
-              <strong>Demo mode.</strong> Supabase is not connected yet, so
-              authentication is running locally. Use
+              <strong>Local development mode.</strong> Nothing behind this form -
+              it is development-only. Use
               {' '}<code>{demo.email}</code> / <code>{demo.password}</code>.
-              {usingSupabase() ? null : (
-                <>
-                  <br />
-                  This is development-only and must be replaced by Supabase Auth
-                  before go-live.
-                </>
-              )}
             </div>
           ) : null}
-
-          <p className="text-muted text-sm" style={{ marginTop: 20 }}>
-            <Link to="/verify/0095030">Open the public verification page</Link>
-          </p>
         </div>
       </main>
     </div>

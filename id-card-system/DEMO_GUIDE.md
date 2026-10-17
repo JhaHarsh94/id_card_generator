@@ -2,11 +2,13 @@
 
 Deployment ke liye: **DEPLOY.md**. Ye file demo karne ke liye hai.
 
-Login (har device par):
+Login:
 ```
-email:    admin@example.com
-password: demo1234
+email:    admin@punamkabira.org
+password: <seeded admin password - kept out of this public repo>
 ```
+
+Password badalne ke liye: **Settings → Security**.
 
 ---
 
@@ -15,19 +17,20 @@ password: demo1234
 ## Terminal me
 
 ```bash
-npm install -g vercel
-cd C:\Users\hjha7\OneDrive\Desktop\id\id-card-system
-vercel --prod
+cd C:\Users\hjha7\OneDrive\Desktop\id
+vercel deploy --prod --yes --scope jhaharsh94s-projects
 ```
 
-Pehli baar puchega — Enter daba do, phir login karo (GitHub/Email).
+⚠️ **`id-card-system` ke andar se deploy na karein.** Project pehle se linked hai
+(`.vercel` folder repo ke root me hai) — andar se chalane par Vercel ek **naya
+duplicate project** bana dega.
 
-Kaam hone ke baad ek URL milega:
+Har deploy ke baad output me ye line aani chahiye:
 ```
-https://id-card-system.vercel.app
+▲ Aliased     https://id-card-generator-chi-one.vercel.app
 ```
 
-**Wo URL client ko bhej do.** Yehi QR code me bhi jayega.
+**Yehi URL client ko bhejein.** Yehi QR code me bhi jaata hai.
 
 ## Check karo
 
@@ -46,9 +49,11 @@ Browser me kholo → login page aana chahiye.
 
 ## 2. Dashboard
 
-- 5 numbers upar: Total, Active, Expired, Revoked, Issued this month
-- Neeche: recently added + expiring wale
-- Batao: *"expired status automatically date se calculate hota hai"*
+- Sabse upar bada gradient card: **Total members** ka number (count-up animation ke saath)
+- Usi card me: Active, Issued this month, Renew soon — click karke seedha filtered list khulti hai
+- Neeche 5 cards: Active / Expired / Revoked / Issued this month / Lapsing in 30 days
+- Phir: status donut, 6-month issuance trend, state aur district ki breakdown
+- Batao: *"expired status date se automatically calculate hota hai — koi manual kaam nahi"*
 
 ## 3. Naya member banana ← **sabse important**
 
@@ -124,48 +129,44 @@ Member page par 3 button:
 | QR chalu/off | Settings |
 
 ## Public verification (bina login)
-- `your-url.vercel.app/verify/0095030`
-- Koi bhi phone/browser se khul sakta hai
-- Sirf: naam, designation, state, ID number, valid upto, organisation
+- `your-url.vercel.app/verify/<member-number>`
+- Member ke QR ko scan karne par yahi page khulta hai
+- Koi bhi phone/browser se khul sakta hai — login ki zaroorat nahi
+- Sirf: naam, pad, rajya, jila, ID number, valid upto, status, organisation
 
 ---
 
-# PART 4 — Honestly bataiye (ye important hai)
+# PART 4 — System ki sacchai (ye important hai)
 
-Ye **database ke bina demo** hai. Client ko pehle se bata dein:
+Ye ab **live database** wala system hai — demo mode nahi:
 
-| Chalega ✅ | Nahi chalega ❌ |
-|---|---|
-| Poora admin flow | Data har browser me alag |
-| Card generation + export | Laptop ka member phone me nahi milega |
-| Revoke / Renew | Doosre device me sab fresh |
-| **0095030–0095034** ka verify | Naye member ka verify (phone par) |
+| Sach ✅ |
+|---|
+| Sara data Neon Postgres me hai — har device par wahi data |
+| Laptop par add kiya member phone par scan karne par milega |
+| Login ke bina admin panel nahi khulta (sirf QR verification public hai) |
+| Har card ka apna QR, jo seedha us member ka verification page kholta hai |
 
 ## QR scanning demo ke liye
 
-Sirf **5 seeded IDs** use karo:
+Register ab khaali hai aur sab kuch real data hai — koi seeded ID nahi:
 
-| ID | Status |
-|---|---|
-| 0095030 | ✓ VALID |
-| 0095031 | ✓ VALID |
-| 0095032 | ✓ VALID |
-| 0095033 | ⚠ EXPIRED |
-| 0095034 | ✕ REVOKED |
-
-Ye har device me maujood hain, isliye phone par scan **kaam karega**.
-
-Naya member add karke phone par scan karenge to **NOT FOUND** aayega — ye bug nahi hai, database nahi hai. Agar client pooche to bolo: *"ye database connect hone ke baad solve ho jayega"*.
+1. Admin panel me ek member add karein (photo ke saath).
+2. Member ki detail page kholkar card ka QR phone se scan karein.
+3. Verification page par wahi naam, pad, jila aur valid-upto dikhega.
+4. Phir **Revoke** karke dobara scan karein — status turant **REVOKED**
+   dikhega. Yahi cheez client ko sabse zyada impress karti hai, kyunki isse
+   pata chalta hai ki card aur database juda hua hai.
 
 ---
 
 # PART 5 — Client ke sawal aur jawab
 
 **"Data secure hai?"**
-> Abhi demo hai. Live version me Supabase + Row Level Security lagega — bina login kuch bhi access nahi hoga. QR me sirf public link hota hai, personal data nahi.
+> Haan. Data Neon Postgres me hai aur browser me database ka password kabhi nahi jaata — browser sirf `/api` call karta hai. Har API call server par session cookie check karti hai, isliye bina admin login kuch bhi nahi milta. QR verification public hai, par usme sirf wahi fields hain jo card par already printed hain (naam, pad, rajya, jila, valid-upto) — photo ya koi internal note nahi.
 
 **"Photo kaha store hoti hai?"**
-> Abhi browser me. Live me Supabase Storage me, private bucket — sirf admin access.
+> Member ke record ke saath database me. Photo sirf admin panel me dikhti hai, public verification page par kabhi nahi.
 
 **"Member ek saath 500 add kar sakte hain?"**
 > Haan, Excel/CSV import bana hua hai (Phase 13). Demo ke baad dikhaunga.
@@ -189,4 +190,4 @@ Demo ke baad client se confirm karo:
 2. Organization ki details final? (naam, registration, addresses)
 3. Logo/stamp ki sahi files chahiye? (PNG, background ke bina)
 4. Kitne members hain roughly? (bulk import ki zaroorat hai?)
-5. Supabase connect karein? (**1–2 ghante** — isi session me ho jayega)
+5. Password badalna hai? Settings → Security se turant badal sakte hain.

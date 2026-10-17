@@ -64,7 +64,8 @@ async function main() {
     behavior: 'allow', downloadPath: downloadDir, eventsEnabled: true,
   });
 
-  await cdp.send('Page.navigate', { url: `${baseUrl}/` });
+  // The generator moved to /generate when the landing page took over "/".
+  await cdp.send('Page.navigate', { url: `${baseUrl}/generate` });
   await sleep(2500);
 
   // --- fill the form ---
