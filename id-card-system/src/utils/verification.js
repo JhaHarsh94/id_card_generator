@@ -16,10 +16,18 @@
 
 const BASE_KEY = 'idcms.verifyBaseUrl';
 
+function safeOrigin(value) {
+  if (!value) return '';
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) ? url.origin : '';
+  } catch { return ''; }
+}
+
 /** Persisted override, set from Settings. */
 export function getVerifyBaseUrl() {
   try {
-    return localStorage.getItem(BASE_KEY) || '';
+    return safeOrigin(localStorage.getItem(BASE_KEY));
   } catch {
     return '';
   }
@@ -27,7 +35,7 @@ export function getVerifyBaseUrl() {
 
 export function setVerifyBaseUrl(value) {
   try {
-    const url = String(value ?? '').trim();
+    const url = safeOrigin(String(value ?? '').trim());
     if (url) localStorage.setItem(BASE_KEY, url.replace(/\/+$/, ''));
     else localStorage.removeItem(BASE_KEY);
   } catch {
@@ -40,11 +48,11 @@ export function setVerifyBaseUrl(value) {
  * @param {string} memberId
  * @returns {string} absolute URL
  */
-export function buildVerifyUrl(memberId) {
+export function buildVerifyUrl(memberId, baseUrl = '') {
   const id = encodeURIComponent(String(memberId ?? '').trim());
   const path = `/verify/${id}`;
 
-  const configured = getVerifyBaseUrl();
+  const configured = safeOrigin(baseUrl) || getVerifyBaseUrl();
   if (configured) return `${configured}${path}`;
 
   if (typeof window === 'undefined' || !window.location?.origin) return path;

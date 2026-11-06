@@ -11,6 +11,8 @@ import { getMember, renewMember, revokeMember, getOrganization } from '../servic
 import { deriveStatus, STATUS } from '../utils/status';
 import { addMonths, formatDate, formatDateLong, describeValidity, toISODate, today } from '../utils/date';
 import { downloadCardPdf, downloadCardPng, printCard } from '../utils/cardExport';
+import { buildVerifyUrl } from '../utils/verification';
+import { CARD, EXPORT_SCALE } from '../config/cardDesign';
 
 /**
  * MemberDetails
@@ -28,11 +30,13 @@ export default function MemberDetails() {
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [loadVersion, setLoadVersion] = useState(0);
   const [busy, setBusy] = useState('');
   const [copied, setCopied] = useState(false);
 
   const organization = getOrganization();
-  const lookedUp = decodeURIComponent(memberId ?? '');
+  const lookedUp = memberId ?? '';
 
   useEffect(() => {
     let alive = true;
@@ -40,26 +44,28 @@ export default function MemberDetails() {
     getMember(lookedUp)
       .then((row) => {
         if (!alive) return;
+        setLoadError('');
         if (row) {
           setMember(row);
           setNotFound(false);
+          setLoadError('');
         } else {
           setMember(null);
           setNotFound(true);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!alive) return;
         setMember(null);
-        setNotFound(true);
+        setLoadError(error.message || 'The member could not be loaded.');
       })
       .finally(() => alive && setLoading(false));
 
     return () => { alive = false; };
-  }, [lookedUp]);
+  }, [lookedUp, loadVersion]);
 
   const status = member ? deriveStatus(member) : null;
-  const verifyUrl = `${window.location.origin}/verify/${encodeURIComponent(memberId)}`;
+  const verifyUrl = buildVerifyUrl(member?.memberId || lookedUp, organization.verifyBaseUrl);
 
   async function runExport(kind) {
     if (!cardRef.current || busy) return;
@@ -90,8 +96,7 @@ export default function MemberDetails() {
           : member.validUntil,
         organization.defaultValidityMonths ?? 12,
       );
-      await renewMember(member.id, next);
-      setMember(await getMember(member.memberId));
+      setMember(await renewMember(member.id, next));
     } catch {
       window.alert('The ID could not be renewed. Please try again.');
     } finally {
@@ -103,15 +108,15 @@ export default function MemberDetails() {
     const reason = window.prompt(
       'Are you sure you want to revoke this ID?\n\n'
       + 'The QR code will keep working but will report this ID as REVOKED.\n\n'
-      + 'Reason (optional):',
+      + 'Reason (required):',
       '',
     );
     if (reason === null || busy) return;
+    if (!reason.trim()) { window.alert('Enter a reason for revoking the ID.'); return; }
 
     setBusy('revoke');
     try {
-      await revokeMember(member.id, reason.trim() || null);
-      setMember(await getMember(member.memberId));
+      setMember(await revokeMember(member.id, reason.trim()));
     } catch {
       window.alert('The ID could not be revoked. Please try again.');
     } finally {
@@ -140,6 +145,13 @@ export default function MemberDetails() {
     );
   }
 
+  if (loadError) {
+    return <div className="page"><div className="error-state" role="alert">
+      <p>{loadError}</p>
+      <button className="btn btn-primary" onClick={() => setLoadVersion((version) => version + 1)}>Try again</button>
+      <Link to="/admin/members" className="btn btn-secondary">Back to members</Link>
+    </div></div>;
+  }
   if (notFound || !member) {
     return (
       <div className="page">
@@ -147,7 +159,7 @@ export default function MemberDetails() {
           <span className="icon-ring"><ShieldAlert size={24} /></span>
           <p className="h3">ID not found</p>
           <p className="text-muted text-sm">
-            No member holds the ID number {decodeURIComponent(memberId ?? '')}.
+            No member holds the ID number {memberId ?? ''}.
           </p>
           <Link to="/admin/members" className="btn btn-primary">Back to members</Link>
         </div>
@@ -224,8 +236,8 @@ export default function MemberDetails() {
               </button>
             </div>
             <p className="field-hint" style={{ marginTop: 10 }}>
-              PNG exports at 2140px wide (≈635 DPI). PDF is a true CR80 page at
-              85.60 × 53.98 mm. Only the card is exported — never the dashboard.
+              PNG exports at {CARD.width * EXPORT_SCALE}px wide. PDF size is
+              {' '}{CARD.widthMM} × {CARD.heightMM} mm. Only the card is exported.
             </p>
           </div>
         </div>

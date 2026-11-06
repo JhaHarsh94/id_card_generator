@@ -29,6 +29,8 @@ export default function MemberForm({
   showStatusField = true,
 }) {
   const inputRef = useRef(null);
+  const latestValues = useRef(values);
+  useEffect(() => { latestValues.current = values; }, [values]);
   const [photoError, setPhotoError] = useState('');
   const [photoBusy, setPhotoBusy] = useState(false);
   /** Stored size after compression, so the admin can see the saving. */
@@ -57,6 +59,8 @@ export default function MemberForm({
     }
 
     setPhotoBusy(true);
+    onChange({ ...latestValues.current, photoProcessing: true });
+    let prepared = null;
     try {
       const raw = await readAsDataUrl(file);
       const { width, height } = await readSize(raw);
@@ -71,12 +75,13 @@ export default function MemberForm({
       // localStorage only holds ~5 MB in total.
       const { dataUrl, bytes } = await compressImage(raw);
 
-      onChange({ ...values, photoUrl: dataUrl, photoFile: file });
+      prepared = { photoUrl: dataUrl, photoFile: file };
       setPhotoSaved(bytes);
     } catch {
       setPhotoError('That photo could not be read. Try a different file.');
     } finally {
       setPhotoBusy(false);
+      onChange({ ...latestValues.current, ...prepared, photoProcessing: false });
     }
   }
 
@@ -193,7 +198,7 @@ export default function MemberForm({
                 <span className="field-error"><AlertCircle size={13} />{errors.district}</span>
               ) : (
                 <span className="field-hint">
-                  Not shown on the card, but searchable from the members list.
+                  Printed on the card and searchable from the members list.
                 </span>
               )}
             </div>
@@ -242,7 +247,7 @@ export default function MemberForm({
                     className="select"
                     value={values.status ?? STATUS.ACTIVE}
                     onChange={set('status')}
-                    disabled={disabled}
+                    disabled={disabled || photoBusy}
                   >
                     {STATUS_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -361,7 +366,7 @@ export default function MemberForm({
                     type="button"
                     className="btn btn-danger-ghost btn-sm"
                     onClick={clearPhoto}
-                    disabled={disabled}
+                    disabled={disabled || photoBusy}
                   >
                     <Trash2 size={15} />
                     Remove

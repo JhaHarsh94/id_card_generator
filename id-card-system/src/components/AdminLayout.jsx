@@ -83,14 +83,18 @@ function crumbFor(pathname) {
 
 export default function AdminLayout() {
   const [open, setOpen] = useState(false);
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 1024px)').matches);
   const [counts, setCounts] = useState(null);
   const [menu, setMenu] = useState(false);
   const [term, setTerm] = useState('');
+  const [logoutError, setLogoutError] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
   const organization = getOrganization();
   const { user, logout } = useAuth();
   const menuRef = useRef(null);
+  const drawerRef = useRef(null);
+  const [, refreshOrganization] = useState(0);
 
   const crumb = crumbFor(location.pathname);
   const pageLabel = crumb.length ? crumb[crumb.length - 1].label : 'Dashboard';
@@ -98,14 +102,58 @@ export default function AdminLayout() {
   // The mobile drawer is dismissed on link activation rather than in an effect
   // on location, which would cause an extra render pass on every navigation.
   const closeDrawer = () => setOpen(false);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1024px)');
+    const changed = () => { setMobile(media.matches); if (!media.matches) setOpen(false); };
+    media.addEventListener('change', changed);
+    return () => media.removeEventListener('change', changed);
+  }, []);
 
   useEffect(() => {
     let alive = true;
-    listMembers()
-      .then((rows) => alive && setCounts(summarise(rows)))
-      .catch(() => {});
-    return () => { alive = false; };
+    const refresh = () => listMembers()
+      .then((rows) => alive && setCounts(summarise(rows))).catch(() => {});
+    const orgChanged = () => refreshOrganization((version) => version + 1);
+    refresh();
+    window.addEventListener('idcms:members-changed', refresh);
+    window.addEventListener('idcms:organization-changed', orgChanged);
+    return () => {
+      alive = false;
+      window.removeEventListener('idcms:members-changed', refresh);
+      window.removeEventListener('idcms:organization-changed', orgChanged);
+    };
   }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    drawerRef.current?.querySelector('button')?.focus();
+    const onKey = (event) => {
+      if (event.key === 'Escape') setOpen(false);
+      if (event.key !== 'Tab') return;
+      const controls = [...drawerRef.current.querySelectorAll('a, button:not(:disabled)')];
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKey);
+      previousFocus?.focus();
+    };
+  }, [open]);
+
+  async function handleLogout() {
+    setMenu(false);
+    setLogoutError('');
+    const result = await logout();
+    if (result.ok) navigate('/login', { replace: true });
+    else setLogoutError(result.error || 'Could not sign out. Please try again.');
+  }
 
   // Close the user menu on an outside click or Escape. Listening only while the
   // menu is open keeps two global listeners off the page for its whole life.
@@ -148,7 +196,9 @@ export default function AdminLayout() {
       />
 
       {/* ---- sidebar ---- */}
-      <aside className={`sidebar ${open ? 'open' : ''}`}>
+      <aside ref={drawerRef} id="admin-navigation" className={`sidebar ${open ? 'open' : ''}`}
+        inert={mobile && !open} role={mobile && open ? 'dialog' : undefined}
+        aria-modal={mobile && open ? true : undefined} aria-label="Main navigation">
         <div className="sidebar__brand">
           {organization.logoUrl ? (
             <img className="sidebar__logo" src={organization.logoUrl} alt="" />
@@ -210,10 +260,7 @@ export default function AdminLayout() {
               style={{ color: 'rgba(255,255,255,.75)' }}
               aria-label="Log out"
               title="Log out"
-              onClick={async () => {
-                await logout();
-                navigate('/login', { replace: true });
-              }}
+              onClick={handleLogout}
             >
               <LogOut size={17} />
             </button>
@@ -222,7 +269,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* ---- main ---- */}
-      <div className="admin__main">
+      <div className="admin__main" inert={mobile && open}>
         <header className="admin__header">
           <div className="admin__header-main">
             <button
@@ -230,6 +277,8 @@ export default function AdminLayout() {
               className="btn btn-ghost btn-icon sidebar-toggle"
               onClick={() => setOpen(true)}
               aria-label="Open navigation"
+              aria-controls="admin-navigation"
+              aria-expanded={open}
             >
               <Menu size={19} />
             </button>
@@ -317,11 +366,7 @@ export default function AdminLayout() {
                     type="button"
                     className="usermenu__item usermenu__item--danger"
                     role="menuitem"
-                    onClick={async () => {
-                      setMenu(false);
-                      await logout();
-                      navigate('/login', { replace: true });
-                    }}
+                    onClick={handleLogout}
                   >
                     <LogOut size={16} /> Log out
                   </button>
@@ -332,6 +377,7 @@ export default function AdminLayout() {
         </header>
 
         <main className="admin__content">
+          {logoutError && <p className="banner banner-error" role="alert">{logoutError}</p>}
           <Outlet />
         </main>
 

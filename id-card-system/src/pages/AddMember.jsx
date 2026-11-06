@@ -4,12 +4,11 @@ import { Save, IdCard, CheckCircle2, AlertCircle } from 'lucide-react';
 import MemberForm from '../components/MemberForm';
 import CardStage from '../components/CardStage';
 import PageHeader from '../components/admin/PageHeader';
-import organizationDefaults from '../config/organization.default';
 import { validateMemberForm } from '../utils/validation';
 import { addMonths, toISODate, today } from '../utils/date';
 import { suggestNextId } from '../utils/idGenerator';
 import { buildVerifyUrl } from '../utils/verification';
-import { createMember, existingMemberIds } from '../services/members';
+import { createMember, existingMemberIds, getOrganization } from '../services/members';
 
 /**
  * AddMember
@@ -18,13 +17,15 @@ import { createMember, existingMemberIds } from '../services/members';
  * every keystroke updates the card immediately. There is no separate "generate"
  * step and nothing to position by hand - the template is fixed.
  */
-export default function AddMember({ organization = organizationDefaults }) {
+export default function AddMember() {
+  const organization = getOrganization();
   const navigate = useNavigate();
   const formRef = useRef(null);
 
   const [values, setValues] = useState(() => ({
     fullName: '',
     memberId: '',
+    memberIdEditable: true,
     designation: '',
     state: '',
     district: '',
@@ -60,6 +61,7 @@ export default function AddMember({ organization = organizationDefaults }) {
 
   async function handleSave(event) {
     event.preventDefault();
+    if (saving || values.photoProcessing) return;
     setBanner(null);
 
     const result = validateMemberForm(values, knownIds);
@@ -101,7 +103,7 @@ export default function AddMember({ organization = organizationDefaults }) {
       } else {
         setBanner({
           kind: 'error',
-          text: 'The member could not be saved. Please try again.',
+          text: err.message || 'The member could not be saved. Please try again.',
         });
       }
     } finally {
@@ -144,7 +146,7 @@ export default function AddMember({ organization = organizationDefaults }) {
             <button
               type="submit"
               className="btn btn-primary btn-lg"
-              disabled={saving}
+              disabled={saving || values.photoProcessing}
             >
               {saving
                 ? <><span className="spinner" /> Saving&hellip;</>
@@ -154,7 +156,7 @@ export default function AddMember({ organization = organizationDefaults }) {
             <button
               type="button"
               className="btn btn-red btn-lg"
-              disabled={saving}
+              disabled={saving || values.photoProcessing}
               onClick={() => {
                 const result = validateMemberForm(values, knownIds);
                 setErrors(result.errors);
@@ -189,17 +191,17 @@ export default function AddMember({ organization = organizationDefaults }) {
                 member={memberForCard}
                 verifyUrl={
                   values.memberId && organization.qrEnabled
-                    ? buildVerifyUrl(values.memberId)
+                    ? buildVerifyUrl(values.memberId, organization.verifyBaseUrl)
                     : null
                 }
               />
             </div>
 
-            <div className="preview-panel__actions">
+            {import.meta.env.DEV && <div className="preview-panel__actions">
               <Link to="/dev/card" className="btn btn-secondary btn-sm">
                 Open full-size preview
               </Link>
-            </div>
+            </div>}
           </div>
 
           <div className="card">

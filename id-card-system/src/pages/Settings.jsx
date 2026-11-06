@@ -164,13 +164,16 @@ export default function Settings() {
 
   async function handleSave(event) {
     event.preventDefault();
+    if (saving) return;
     setSaving(true);
     setBanner(null);
     try {
-      saveOrganization({
+      const saved = await saveOrganization({
         name: values.name.trim(),
         nameHi: values.nameHi?.trim() ?? '',
         registrationText: values.registrationText.trim(),
+        registrationValue: values.registrationValue.trim(),
+        authorityText: values.authorityText.trim(),
         isoText: values.isoText?.trim() ?? '',
         scopeText: values.scopeText.trim(),
         supportText: values.supportText.trim(),
@@ -178,16 +181,18 @@ export default function Settings() {
         signatoryName: values.signatoryName.trim(),
         signatoryDesignation: values.signatoryDesignation.trim(),
         idPrefix: values.idPrefix.trim(),
-        idStart: Number(values.idStart) || 1,
-        idPadding: Number(values.idPadding) || 7,
-        defaultValidityMonths: Number(values.defaultValidityMonths) || 12,
+        idStart: Number(values.idStart),
+        idPadding: Number(values.idPadding),
+        defaultValidityMonths: Number(values.defaultValidityMonths),
+        verifyBaseUrl: values.verifyBaseUrl,
         qrEnabled: Boolean(values.qrEnabled),
         logoUrl: values.logoUrl,
         sealUrl: values.sealUrl,
       });
+      setValues(saved);
       setBanner({ kind: 'ok', text: 'Settings saved. New cards will use these values.' });
-    } catch {
-      setBanner({ kind: 'error', text: 'Settings could not be saved.' });
+    } catch (error) {
+      setBanner({ kind: 'error', text: error.message || 'Settings could not be saved.' });
     } finally {
       setSaving(false);
     }
@@ -277,8 +282,16 @@ export default function Settings() {
                 </div>
 
                 <div className="field span-2">
-                  <label className="label" htmlFor="s-reg">Registration line (under header)</label>
+                  <label className="label" htmlFor="s-reg">Registration label (top left)</label>
                   <input id="s-reg" className="input" value={values.registrationText} onChange={set('registrationText')} />
+                </div>
+                <div className="field">
+                  <label className="label" htmlFor="s-reg-value">Registration number</label>
+                  <input id="s-reg-value" className="input" value={values.registrationValue} onChange={set('registrationValue')} />
+                </div>
+                <div className="field">
+                  <label className="label" htmlFor="s-authority">Authority heading</label>
+                  <input id="s-authority" className="input" value={values.authorityText} onChange={set('authorityText')} />
                 </div>
                 <div className="field span-2">
                   <label className="label" htmlFor="s-scope">Small line under the validity date</label>
@@ -346,6 +359,12 @@ export default function Settings() {
                     <QrCode size={15} /> Print a QR code on every card
                   </label>
                 </div>
+                <div className="field span-2">
+                  <label className="label" htmlFor="s-verify-base">Verification site URL (optional)</label>
+                  <input id="s-verify-base" type="url" className="input" value={values.verifyBaseUrl || ''}
+                    onChange={set('verifyBaseUrl')} placeholder="https://cards.example.org" />
+                  <span className="field-hint">Leave empty to use this site's address for verification links.</span>
+                </div>
               </div>
             </div>
           </section>
@@ -357,10 +376,18 @@ export default function Settings() {
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => {
+              disabled={saving}
+              onClick={async () => {
                 if (!window.confirm('Reset all organisation settings back to defaults?')) return;
-                setValues(resetOrganization());
-                setBanner({ kind: 'ok', text: 'Settings reset to defaults.' });
+                setSaving(true);
+                try {
+                  setValues(await resetOrganization());
+                  setBanner({ kind: 'ok', text: 'Settings reset to defaults.' });
+                } catch {
+                  setBanner({ kind: 'error', text: 'Settings could not be reset.' });
+                } finally {
+                  setSaving(false);
+                }
               }}
             >
               <RotateCcw size={16} /> Reset to defaults

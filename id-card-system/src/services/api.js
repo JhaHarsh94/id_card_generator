@@ -20,14 +20,13 @@
  * while `npm run dev` keeps working with no backend at all.
  */
 
-const explicit = import.meta.env.VITE_DATA_BACKEND;
+import { requestJson } from './http.js';
+export { ApiError } from './http.js';
+
+const explicit = import.meta.env?.VITE_DATA_BACKEND;
 
 /** True when reads and writes go through /api rather than localStorage. */
-export const usingApi = explicit === 'api'
-  ? true
-  : explicit === 'local'
-    ? false
-    : Boolean(import.meta.env.PROD);
+export const usingApi = Boolean(import.meta.env?.PROD) || explicit === 'api';
 
 const BASE = '/api';
 
@@ -36,15 +35,6 @@ const BASE = '/api';
  * (DUPLICATE_ID, UNAUTHENTICATED, ...). A bare Error would force every caller
  * to pattern-match on a message.
  */
-export class ApiError extends Error {
-  constructor(code, message, status) {
-    super(message);
-    this.name = 'ApiError';
-    this.code = code;
-    this.status = status;
-  }
-}
-
 /**
  * Perform a request and normalise the outcome.
  *
@@ -52,33 +42,7 @@ export class ApiError extends Error {
  * every admin call would come back 401.
  */
 async function request(path, { method = 'GET', body } = {}) {
-  let res;
-  try {
-    res = await fetch(`${BASE}${path}`, {
-      method,
-      credentials: 'same-origin',
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-  } catch {
-    throw new ApiError('NETWORK', 'Cannot reach the server. Check your connection.', 0);
-  }
-
-  let payload = null;
-  try {
-    payload = await res.json();
-  } catch {
-    payload = null;
-  }
-
-  if (!res.ok) {
-    throw new ApiError(
-      payload?.code ?? `HTTP_${res.status}`,
-      payload?.message ?? 'Something went wrong. Please try again.',
-      res.status,
-    );
-  }
-  return payload ?? {};
+  return requestJson(`${BASE}${path}`, { method, body });
 }
 
 export const api = {

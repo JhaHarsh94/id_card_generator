@@ -27,17 +27,15 @@ export default function StatusDonut({
   const circumference = 2 * Math.PI * radius;
   const safeTotal = total > 0 ? total : 1;
 
-  let consumed = 0;
-  const arcs = segments
-    .filter((s) => s.value > 0)
-    .map((s) => {
+  const visible = segments.filter((s) => s.value > 0);
+  const arcs = visible.map((s, index) => {
       const length = (s.value / safeTotal) * circumference;
       const arc = {
         ...s,
         dash: `${length} ${circumference - length}`,
-        offset: -consumed,
+        offset: -visible.slice(0, index).reduce((sum, previous) => sum + previous.value, 0)
+          / safeTotal * circumference,
       };
-      consumed += length;
       return arc;
     });
 

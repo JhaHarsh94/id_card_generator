@@ -16,7 +16,8 @@
 /** RFC 4180 field quoting. */
 function escapeField(value) {
   if (value === null || value === undefined) return '';
-  const text = String(value);
+  const raw = String(value);
+  const text = /^[\s]*[=+@-]|^[\t\r\n]/.test(raw) ? `'${raw}` : raw;
   // Always quote: dates and IDs that look numeric stay text this way, so a
   // leading zero in an ID such as 0095030 is not silently dropped by Excel.
   return `"${text.replace(/"/g, '""')}"`;

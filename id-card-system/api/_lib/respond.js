@@ -28,23 +28,36 @@ export function fail(res, status, code, message) {
  * arrive as a string, or as an already-object body depending on headers), so
  * all three cases are handled here rather than assumed in each route.
  */
-export async function readBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') {
-    try {
-      return JSON.parse(req.body || '{}');
-    } catch {
-      return {};
-    }
-  }
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  const raw = Buffer.concat(chunks).toString('utf8');
-  if (!raw) return {};
+export async function readBody(req, res) {
+  const maxBytes = 4 * 1024 * 1024;
   try {
-    return JSON.parse(raw);
+    let body = req.body;
+    if (body === undefined) {
+      const chunks = [];
+      let length = 0;
+      for await (const chunk of req) {
+        const buffer = Buffer.from(chunk);
+        length += buffer.length;
+        if (length > maxBytes) {
+          if (res) fail(res, 413, 'TOO_LARGE', 'The upload is too large. Use a smaller image.');
+          return null;
+        }
+        chunks.push(buffer);
+      }
+      body = Buffer.concat(chunks).toString('utf8');
+    }
+    if (typeof body === 'string') {
+      if (Buffer.byteLength(body) > maxBytes) {
+        if (res) fail(res, 413, 'TOO_LARGE', 'The upload is too large. Use a smaller image.');
+        return null;
+      }
+      body = JSON.parse(body || '{}');
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('invalid');
+    return body;
   } catch {
-    return {};
+    if (res) fail(res, 400, 'INVALID_JSON', 'Send a valid JSON object.');
+    return null;
   }
 }
 

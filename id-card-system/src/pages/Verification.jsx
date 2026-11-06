@@ -20,6 +20,7 @@ export default function Verification() {
   const [searched, setSearched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [recent, setRecent] = useState([]);
+  const [error, setError] = useState('');
   const organization = getOrganization();
 
   // Initial load must be an effect, not a lazy state initializer.
@@ -35,10 +36,15 @@ export default function Verification() {
     if (!id || busy) return;
 
     setBusy(true);
+    setError('');
+    setResult(null);
+    setSearched(false);
     try {
       const member = await getMember(id);
       setResult(member);
       setSearched(true);
+    } catch (err) {
+      setError(err.message || 'Verification is unavailable. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -63,6 +69,7 @@ export default function Verification() {
                 id="lookup"
                 className="input text-mono"
                 value={query}
+                disabled={busy}
                 onChange={(e) => { setQuery(e.target.value); setResult(null); setSearched(false); }}
                 placeholder="e.g. 0095030"
                 autoComplete="off"
@@ -72,6 +79,7 @@ export default function Verification() {
               {busy ? <span className="spinner" /> : <Search size={16} />} Check
             </button>
           </form>
+          {error && <p className="banner banner-error" role="alert" style={{ marginTop: 16 }}>{error}</p>}
 
           {searched && !result ? (
             <div className="banner banner-warn" style={{ marginTop: 16 }}>

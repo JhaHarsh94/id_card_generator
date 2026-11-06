@@ -27,7 +27,8 @@ export default async function handler(req, res) {
   if (!admin) return;
   if (!sameOrigin(req)) return fail(res, 403, 'FORBIDDEN', 'Request rejected.');
 
-  const body = await readBody(req);
+  const body = await readBody(req, res);
+  if (!body) return;
   const current = String(body.currentPassword ?? '');
   const next = String(body.newPassword ?? '');
 

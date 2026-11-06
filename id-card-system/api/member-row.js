@@ -29,6 +29,9 @@ export default async function handler(req, res) {
 
   const id = String(req.query?.id ?? '');
   if (!id) return fail(res, 400, 'INVALID', 'A member id is required.');
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id)) {
+    return fail(res, 400, 'INVALID', 'Enter a valid member record id.');
+  }
 
   if (req.method === 'GET') {
     try {
@@ -55,8 +58,17 @@ export default async function handler(req, res) {
   }
 
   // PATCH / PUT
-  const body = await readBody(req);
-  const { values, problems } = pickWritable(body);
+  const body = await readBody(req, res);
+  if (!body) return;
+  let current;
+  try {
+    current = await queryOne('select * from members where id = $1', [id]);
+  } catch (err) {
+    const e = dbError(err, 'Could not load the member.');
+    return fail(res, 503, e.code, e.message);
+  }
+  if (!current) return fail(res, 404, 'NOT_FOUND', 'That member does not exist.');
+  const { values, problems } = pickWritable(body, { current: toMember(current), requireComplete: true });
   if (problems.length) return fail(res, 400, 'INVALID', problems[0]);
 
   const entries = Object.entries(values);

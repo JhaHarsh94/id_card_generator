@@ -10,7 +10,7 @@
  * derive status through exactly the same code path.
  */
 
-import { daysBetween, today, toYMD } from './date';
+import { daysBetween, today, toYMD } from './date.js';
 
 export const STATUS = {
   ACTIVE: 'active',

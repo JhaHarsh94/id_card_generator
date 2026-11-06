@@ -5,7 +5,7 @@
  * administrator - they never expose raw technical detail.
  */
 
-import { isValidYMD, toYMD, toISODate } from './date';
+import { isValidYMD, toYMD, toISODate } from './date.js';
 
 /* ==========================================================================
    Text
@@ -160,6 +160,8 @@ export function validateMemberForm(form, existingIds = [], currentId = null) {
     add('memberId', 'ID number is required.');
   } else if (memberId.length < 3) {
     add('memberId', 'ID number is too short.');
+  } else if (memberId.length > 24) {
+    add('memberId', 'ID number must be 24 characters or fewer.');
   } else if (!/^[A-Za-z0-9-]+$/.test(memberId)) {
     add('memberId', 'Use letters, numbers and hyphens only.');
   } else if (existingIds.includes(memberId) && memberId !== currentId) {
