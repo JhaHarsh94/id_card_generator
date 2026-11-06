@@ -44,7 +44,8 @@ async function sha256(text) {
 function localUsers() {
   try {
     const raw = localStorage.getItem(USERS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const users = raw ? JSON.parse(raw) : [];
+    return Array.isArray(users) ? users.filter((user) => user && typeof user.email === 'string') : [];
   } catch {
     return [];
   }
@@ -96,6 +97,7 @@ export async function signIn(email, password) {
   if (usingApi) {
     try {
       const { user } = await api.post('/auth/login', { email: address, password });
+      if (!user?.id || !user?.email) throw new Error('The sign-in response was incomplete. Please try again.');
       return { ok: true, user };
     } catch (err) {
       // Deliberately vague: never reveal whether the email exists.
@@ -121,9 +123,8 @@ export async function signOut() {
   if (usingApi) {
     try {
       await api.post('/auth/logout');
-    } catch {
-      // The cookie is cleared server-side; a network blip must not trap the
-      // user in a signed-in-looking shell.
+    } catch (error) {
+      return { ok: false, error: error.message || 'Could not sign out. Check your connection and try again.' };
     }
     return { ok: true };
   }
@@ -169,8 +170,10 @@ export async function changePassword(currentPassword, newPassword) {
  * local fallback needs no subscription either. Returning a no-op unsubscribe
  * keeps the provider's shape identical.
  */
-export function onAuthChange() {
-  return () => {};
+export function onAuthChange(callback) {
+  const expired = () => callback(null);
+  window.addEventListener('idcms:auth-expired', expired);
+  return () => window.removeEventListener('idcms:auth-expired', expired);
 }
 
 /**

@@ -29,11 +29,15 @@ const pad = (n) => String(n).padStart(2, '0');
  */
 export function toYMD(value) {
   if (!value) return null;
+  const checked = (y, m, d) => {
+    const parts = { y: Number(y), m: Number(m), d: Number(d) };
+    return isValidYMD(parts) ? parts : null;
+  };
 
   // Already decomposed - common when addMonths() is composed into a format call.
   if (typeof value === 'object' && !(value instanceof Date)) {
     const { y, m, d } = value;
-    return { y: Number(y), m: Number(m), d: Number(d) };
+    return checked(y, m, d);
   }
 
   if (value instanceof Date) {
@@ -49,26 +53,31 @@ export function toYMD(value) {
   if (!raw) return null;
 
   let m;
-  if ((m = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) {
-    return { y: +m[1], m: +m[2], d: +m[3] };
+  if ((m = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?=$|T\d{2}:\d{2})/))) {
+    return checked(m[1], m[2], m[3]);
   }
-  if ((m = raw.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/))) {
-    return { y: +m[3], m: +m[2], d: +m[1] };
+  if ((m = raw.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/))) {
+    return checked(m[3], m[2], m[1]);
   }
   if ((m = raw.match(/^(\d{4})(\d{2})(\d{2})$/))) {
-    return { y: +m[1], m: +m[2], d: +m[3] };
+    return checked(m[1], m[2], m[3]);
   }
   return null;
 }
 
 /** Build a UTC Date at midnight, safe for day arithmetic. */
 export function fromYMD({ y, m, d }) {
-  return new Date(Date.UTC(y, m - 1, d));
+  const date = new Date(0);
+  date.setUTCFullYear(y, m - 1, d);
+  date.setUTCHours(0, 0, 0, 0);
+  return date;
 }
 
 /** True when the parts form a real calendar date (rejects 31/02). */
-export function isValidYMD({ y, m, d }) {
-  if (!y || !m || !d) return false;
+export function isValidYMD(value) {
+  if (!value || typeof value !== 'object') return false;
+  const { y, m, d } = value;
+  if (![y, m, d].every(Number.isInteger) || y < 1 || y > 9999) return false;
   if (m < 1 || m > 12 || d < 1 || d > 31) return false;
   const dt = fromYMD({ y, m, d });
   return (
@@ -99,14 +108,13 @@ export function formatDateLong(value) {
   return `${pad(p.d)} ${MONTHS_SHORT[p.m - 1]} ${p.y}`;
 }
 
-/** Today as { y, m, d } in UTC. */
-export function today() {
-  const now = new Date();
-  return {
-    y: now.getUTCFullYear(),
-    m: now.getUTCMonth() + 1,
-    d: now.getUTCDate(),
-  };
+/** Organisation calendar date, consistent on phones, desktops and the server. */
+export function today(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(now);
+  const pick = (type) => Number(parts.find((part) => part.type === type)?.value);
+  return { y: pick('year'), m: pick('month'), d: pick('day') };
 }
 
 /**
@@ -116,11 +124,11 @@ export function today() {
  */
 export function addMonths(value, months) {
   const p = toYMD(value);
-  if (!p) return null;
+  if (!p || !Number.isInteger(months)) return null;
 
   const totalMonths = (p.y * 12 + (p.m - 1)) + months;
   const y = Math.floor(totalMonths / 12);
-  const m = (totalMonths % 12) + 1;
+  const m = ((totalMonths % 12) + 12) % 12 + 1;
 
   const daysInTarget = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const d = Math.min(p.d, daysInTarget);

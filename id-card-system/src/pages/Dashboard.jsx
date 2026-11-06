@@ -50,13 +50,13 @@ export default function Dashboard() {
     return () => { alive = false; };
   }, []);
 
-  const rows = members ?? [];
-  const counts = useMemo(() => summarise(rows), [members]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rows = useMemo(() => members ?? [], [members]);
+  const counts = useMemo(() => summarise(rows), [rows]);
 
   // "Now" is captured once per data load. Reading `new Date()` inside each memo
   // would recompute the trend window on every render and make the chart jitter
   // across a month boundary while the page is open.
-  const now = useMemo(() => new Date(), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [now] = useState(() => new Date());
 
   const thisMonth = useMemo(() => {
     return rows.filter((row) => {

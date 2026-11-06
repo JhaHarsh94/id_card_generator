@@ -19,17 +19,17 @@ import QRCode from 'qrcode';
 export function useQrDataUrl(value, options = {}) {
   const {
     size = 512,
-    margin = 1,
+    margin = 4,
     errorCorrection = 'M',
   } = options;
 
-  const [state, setState] = useState({ url: null, error: null });
+  const [state, setState] = useState({ value: null, url: null, error: null });
 
   // Clear the previous result during render (React's sanctioned
   // render-phase-adjustment pattern) rather than synchronously inside the
   // effect, which would cause an extra cascading render.
   if (!value && state.url !== null) {
-    setState({ url: null, error: null });
+    setState({ value: null, url: null, error: null });
   }
 
   useEffect(() => {
@@ -47,10 +47,10 @@ export function useQrDataUrl(value, options = {}) {
       type: 'image/png',
     })
       .then((url) => {
-        if (!cancelled) setState({ url, error: null });
+        if (!cancelled) setState({ value, url, error: null });
       })
       .catch((err) => {
-        if (!cancelled) setState({ url: null, error: err });
+        if (!cancelled) setState({ value, url: null, error: err });
       });
 
     return () => {
@@ -58,7 +58,7 @@ export function useQrDataUrl(value, options = {}) {
     };
   }, [value, size, margin, errorCorrection]);
 
-  return state;
+  return state.value === value ? state : { url: null, error: null };
 }
 
 export default useQrDataUrl;

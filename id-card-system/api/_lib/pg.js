@@ -19,6 +19,9 @@
 import pg from 'pg';
 
 const { Pool } = pg;
+// DATE values are calendar dates, not local-midnight timestamps. Keeping them
+// as YYYY-MM-DD avoids timezone shifts in the card and public verification.
+pg.types.setTypeParser(1082, (value) => value);
 
 let pool = null;
 
@@ -27,7 +30,9 @@ function connectionString() {
   if (!raw) {
     throw new Error('DATABASE_URL is not set on this deployment.');
   }
-  return raw.replace(/[?&]channel_binding=require\b/, '?').replace(/\?\?/, '?');
+  const url = new URL(raw);
+  url.searchParams.delete('channel_binding');
+  return url.toString();
 }
 
 export function getPool() {

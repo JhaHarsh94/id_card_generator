@@ -94,7 +94,9 @@ export function readCookie(req, name) {
     const idx = pair.indexOf('=');
     if (idx === -1) continue;
     const key = pair.slice(0, idx).trim();
-    if (key === name) return decodeURIComponent(pair.slice(idx + 1).trim());
+    if (key === name) {
+      try { return decodeURIComponent(pair.slice(idx + 1).trim()); } catch { return null; }
+    }
   }
   return null;
 }
@@ -134,11 +136,14 @@ export async function createSession(req, res, admin) {
 /** Revoke the session behind this request, if any. */
 export async function destroySession(req, res) {
   const token = readCookie(req, COOKIE_NAME);
-  if (token) {
-    await queryOne('delete from sessions where token_hash = $1', [sha256(token)]);
+  try {
+    if (token) {
+      await queryOne('delete from sessions where token_hash = $1', [sha256(token)]);
+    }
+  } finally {
+    // Always clear the browser cookie, including when database deletion fails.
+    res.setHeader('Set-Cookie', sessionCookie(req, '', 0));
   }
-  // Max-Age=0 makes the browser drop it rather than leave a dead cookie.
-  res.setHeader('Set-Cookie', sessionCookie(req, '', 0));
 }
 
 /** The admin attached to this request's session, or null. */
@@ -187,7 +192,11 @@ export async function requireAdmin(req, res) {
   try {
     user = await currentUser(req);
   } catch {
-    user = null;
+    res.statusCode = 503;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.end(JSON.stringify({ code: 'DB_UNAVAILABLE', message: 'The service is temporarily unavailable. Please try again.' }));
+    return null;
   }
   if (!user) {
     res.statusCode = 401;

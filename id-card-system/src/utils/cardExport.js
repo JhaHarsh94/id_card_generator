@@ -9,7 +9,7 @@
  */
 
 import { toPng } from 'html-to-image';
-import { CARD, EXPORT_SCALE } from '../config/cardDesign';
+import { CARD, EXPORT_SCALE } from '../config/cardDesign.js';
 
 /** Show a failure the admin can act on, never a raw library error. */
 function exportError(what) {
@@ -24,8 +24,22 @@ export async function cardToPngDataUrl(node) {
   if (!node) throw exportError('card image');
 
   try {
+    const deadline = Date.now() + 5000;
+    while (node.dataset.qrPending === 'true') {
+      if (Date.now() >= deadline) throw exportError('verification code');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (node.dataset.qrError === 'true') throw exportError('verification code');
+    await document.fonts?.ready;
+    await Promise.all(Array.from(node.querySelectorAll('img')).map(async (img) => {
+      if (!img.complete) await img.decode();
+      if (!img.naturalWidth) throw exportError('card image');
+    }));
+    // Let font fitting and image decoding settle before cloning the card.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     return await toPng(node, {
-      // 856 * 2.5 = 2140px wide, comfortably above 300 DPI for CR80.
+      width: CARD.width,
+      height: CARD.height,
       pixelRatio: EXPORT_SCALE,
       cacheBust: true,
       /*
@@ -48,7 +62,8 @@ export async function cardToPngDataUrl(node) {
 
 function safeFilename(member, extension) {
   const id = String(member?.memberId ?? 'card').replace(/[^A-Za-z0-9-]/g, '');
-  const name = String(member?.fullName ?? '').trim().replace(/\s+/g, '-');
+  const name = String(member?.fullName ?? member?.name ?? '').trim()
+    .replace(/[^\p{L}\p{M}\p{N}\s-]/gu, '').replace(/\s+/g, '-');
   const parts = [id, name].filter(Boolean);
   return `${parts.join('_') || 'id-card'}.${extension}`;
 }
@@ -72,8 +87,7 @@ export async function downloadCardPng(node, member) {
 /**
  * Print-ready PDF at the exact physical card size.
  *
- * jsPDF's unit is chosen so 1 unit == 1 mm, giving a 85.60 x 53.98 mm page -
- * i.e. a true CR80 card that prints at 100% with no scaling.
+ * The physical page size preserves the reference artwork's aspect ratio.
  */
 export async function downloadCardPdf(node, member) {
   const dataUrl = await cardToPngDataUrl(node);
@@ -110,34 +124,37 @@ export async function downloadCardPdf(node, member) {
  * into the output and the page size cannot be perturbed by app layout.
  */
 export async function printCard(node, member, { organization } = {}) {
-  const dataUrl = await cardToPngDataUrl(node);
-
+  // Open during the click gesture, before rasterisation awaits, so browsers
+  // do not classify the print window as an unsolicited popup.
   const win = window.open('', '_blank', 'width=900,height=650');
   if (!win) {
     throw new Error('The print window was blocked. Allow pop-ups for this site and try again.');
   }
 
-  const title = String(member?.fullName ?? 'ID card');
+  win.document.write('<!doctype html><title>Preparing card</title><p>Preparing card for print…</p>');
+  let dataUrl;
+  try {
+    dataUrl = await cardToPngDataUrl(node);
+  } catch (error) {
+    win.close();
+    throw error;
+  }
+  if (win.closed) return;
+  const title = String(member?.fullName ?? member?.name ?? 'ID card');
   const org = String(organization?.name ?? '');
 
+  win.document.open();
   win.document.write(`<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
     <title>${escapeHtml(title)} - ${escapeHtml(org)}</title>
     <style>
-      @page { size: ${CARD.widthMM}mm ${CARD.heightMM}mm; margin: 0; }
+      @page { size: A4 landscape; margin: 0; }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      /*
-       * The image is deliberately a fraction under the full page height.
-       * At exactly 53.98mm a sub-pixel rounding overflows the page, the
-       * browser paginates, and the bottom strip of the card is pushed onto a
-       * second sheet. The 0.6mm shortfall costs nothing visually and keeps
-       * the whole card - including the footer - on one page.
-       */
       html, body {
-        width: ${CARD.widthMM}mm;
-        height: ${CARD.heightMM}mm;
+        width: 297mm;
+        height: 210mm;
         overflow: hidden;
         page-break-after: avoid;
         break-after: avoid;
@@ -151,9 +168,9 @@ export async function printCard(node, member, { organization } = {}) {
       }
       img {
         display: block;
-        width: ${(CARD.widthMM - 0.2).toFixed(2)}mm;
-        height: ${(CARD.heightMM - 0.6).toFixed(2)}mm;
-        object-fit: fill;
+        width: ${CARD.widthMM}mm;
+        height: ${CARD.heightMM}mm;
+        object-fit: contain;
       }
       @media screen {
         body { padding: 24px; background: #eceef4; overflow: auto; height: auto; }
@@ -190,10 +207,9 @@ function escapeHtml(value) {
  */
 export async function shareCard(node, member, { verifyUrl, organization, fallback } = {}) {
   let canShareFile = false;
-  let dataUrl = null;
+  const dataUrl = await cardToPngDataUrl(node);
 
   try {
-    dataUrl = await cardToPngDataUrl(node);
     const blob = await (await fetch(dataUrl)).blob();
     const file = new File([blob], safeFilename(member, 'png'), { type: 'image/png' });
     canShareFile = Boolean(navigator.canShare?.({ files: [file] }));
@@ -248,8 +264,7 @@ export async function downloadCardsCombinedPdf(nodes, members, organization) {
   const offsetY = (pageH - (rows * cardH + (rows - 1) * gap)) / 2;
 
   for (let i = 0; i < nodes.length; i += 1) {
-    const page = Math.floor(i / perPage);
-    if (page > 0) doc.addPage();
+    if (i > 0 && i % perPage === 0) doc.addPage();
 
     const col = (i % perPage) % columns;
     const row = Math.floor((i % perPage) / columns);

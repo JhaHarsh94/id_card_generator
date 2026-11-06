@@ -17,7 +17,7 @@
  */
 
 import { addMonths, toISODate, today } from '../utils/date';
-import { organizationDefaults } from '../config/organization.default';
+import { organizationDefaults, normalizeOrganization } from '../config/organization.default';
 
 /**
  * v4: the photo seal was replaced with the organisation's rubber stamp, and
@@ -47,7 +47,7 @@ function seedMembers() {
     state: data.state,
     district: data.district ?? '',
     photoUrl: null,
-    validFrom: toISODate(base),
+    validFrom: toISODate(addMonths(base, -12)),
     validUntil: toISODate(addMonths(base, data.months)),
     status: data.status ?? 'active',
     revocationReason: data.revocationReason ?? null,
@@ -117,15 +117,22 @@ function safeParse(raw, fallback) {
 }
 
 function readMembers() {
-  const stored = safeParse(localStorage.getItem(MEMBERS_KEY), null);
-  if (Array.isArray(stored) && stored.length) return stored;
+  let raw = null;
+  try { raw = localStorage.getItem(MEMBERS_KEY); } catch { /* Writes report unavailable storage. */ }
+  const stored = safeParse(raw, null);
+  if (raw && (!Array.isArray(stored) || stored.some((row) => !row || typeof row.id !== 'string' || typeof row.memberId !== 'string'))) {
+    throw new Error('Saved member data could not be read. Restore the browser data or use another browser profile.');
+  }
+  if (Array.isArray(stored)) return stored;
   const seeded = seedMembers();
-  localStorage.setItem(MEMBERS_KEY, JSON.stringify(seeded));
+  try { localStorage.setItem(MEMBERS_KEY, JSON.stringify(seeded)); } catch { /* Browsing still works; saves report the problem. */ }
   return seeded;
 }
 
 function writeMembers(members) {
-  localStorage.setItem(MEMBERS_KEY, JSON.stringify(members));
+  try { localStorage.setItem(MEMBERS_KEY, JSON.stringify(members)); } catch {
+    throw new Error('Browser storage is unavailable or full. Free space or use the database backend before saving.');
+  }
   return members;
 }
 
@@ -134,8 +141,10 @@ function writeMembers(members) {
    ========================================================================== */
 
 export function getOrganization() {
-  const stored = safeParse(localStorage.getItem(ORG_KEY), null);
-  return { ...organizationDefaults, ...(stored ?? {}) };
+  let raw = null;
+  try { raw = localStorage.getItem(ORG_KEY); } catch { /* Use defaults when storage is blocked. */ }
+  const stored = safeParse(raw, null);
+  return normalizeOrganization(stored);
 }
 
 export function saveOrganization(patch) {
@@ -157,7 +166,7 @@ const delay = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 
 export async function listMembers() {
   await delay();
-  return readMembers().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return readMembers().sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')));
 }
 
 export async function getMember(memberId) {
@@ -182,8 +191,8 @@ export async function createMember(data) {
 
   const now = new Date().toISOString();
   const record = {
-    id: `m-${Date.now().toString(36)}`,
     ...data,
+    id: crypto.randomUUID(),
     isDemo: false,
     createdAt: now,
     updatedAt: now,
@@ -212,6 +221,11 @@ export async function updateMember(rowId, patch) {
       ? { ...m, ...patch, updatedAt: new Date().toISOString() }
       : m,
   );
+  for (const member of next) {
+    delete member.photoFile;
+    delete member.photoProcessing;
+    delete member.memberIdEditable;
+  }
   writeMembers(next);
   return next.find((m) => m.id === rowId) ?? null;
 }

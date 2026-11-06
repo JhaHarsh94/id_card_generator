@@ -34,9 +34,10 @@ import {
   updateMember as localUpdateMember,
 } from './localStore';
 
-import { organizationDefaults } from '../config/organization.default';
+import { organizationDefaults, normalizeOrganization } from '../config/organization.default';
 import { toISODate, today } from '../utils/date';
 import { api, usingApi, qs } from './api';
+import { validateOrganization } from '../../shared/organization.js';
 
 /** True when reads and writes go to Postgres rather than localStorage. */
 export { usingApi };
@@ -46,23 +47,10 @@ export { usingApi };
    ========================================================================== */
 
 /**
- * Merge stored settings onto the defaults.
- *
- * A blank value means "not configured yet", NOT "the trust wants a blank here".
- * Honouring '' wiped real defaults and put a DEMO DATA watermark on real cards,
- * so only a value that carries something may replace a default.
+ * Merge stored settings, migrate the previous artwork and refresh asset URLs.
  */
 function applyOrganizationData(data) {
-  const next = { ...organizationDefaults };
-  if (!data || typeof data !== 'object') return next;
-  for (const [key, value] of Object.entries(data)) {
-    if (value === undefined || value === null) continue;
-    if (typeof value === 'string' && value.trim() === '') continue;
-    next[key] = value;
-  }
-  // Settings saved from the real admin area are never demo data.
-  next.isDemo = false;
-  return next;
+  return normalizeOrganization(data);
 }
 
 /**
@@ -77,7 +65,7 @@ function applyOrganizationData(data) {
 let orgCache = usingApi ? { ...organizationDefaults } : localGetOrganization();
 
 /** Member numbers already issued. Same caching rationale as orgCache. */
-let idsCache = localExistingMemberIds();
+let idsCache = [];
 
 /** The signed-in admin's uuid is no longer needed here - the API stamps it. */
 
@@ -186,7 +174,7 @@ export async function hydrateStores() {
 
 /** Synchronous, cached. See the note on orgCache. */
 export function existingMemberIds() {
-  return idsCache;
+  return usingApi ? [...idsCache] : localExistingMemberIds();
 }
 
 /**
@@ -211,15 +199,48 @@ export function getOrganization() {
 export const listMembers = usingApi ? apiListMembers : localListMembers;
 export const getMember = usingApi ? apiGetMember : localGetMember;
 export const getMemberByRowId = usingApi ? apiGetMemberByRowId : localGetMemberByRowId;
-export const createMember = usingApi ? apiCreateMember : localCreateMember;
-export const updateMember = usingApi ? apiUpdateMember : localUpdateMember;
-export const deleteMember = usingApi ? apiDeleteMember : localDeleteMember;
-export const saveOrganization = usingApi ? apiSaveOrganization : localSaveOrganization;
+function notifyMembersChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('idcms:members-changed'));
+}
+
+export async function createMember(data) {
+  const member = await (usingApi ? apiCreateMember(data) : localCreateMember(data));
+  if (member?.memberId) idsCache = [...new Set([...idsCache, member.memberId])];
+  notifyMembersChanged();
+  return member;
+}
+
+export async function updateMember(rowId, patch) {
+  const member = await (usingApi ? apiUpdateMember(rowId, patch) : localUpdateMember(rowId, patch));
+  if (!member) throw new Error('That member no longer exists.');
+  if (member.memberId) idsCache = [...new Set([...idsCache, member.memberId])];
+  if (usingApi && patch.memberId) await refreshMemberIds().catch(() => {});
+  notifyMembersChanged();
+  return member;
+}
+
+export async function deleteMember(rowId) {
+  await (usingApi ? apiDeleteMember(rowId) : localDeleteMember(rowId));
+  if (usingApi) await refreshMemberIds().catch(() => {});
+  notifyMembersChanged();
+}
+export async function saveOrganization(patch) {
+  const validation = validateOrganization({ ...orgCache, ...patch });
+  if (Object.keys(validation.errors).length) throw new Error(Object.values(validation.errors)[0]);
+  orgCache = usingApi
+    ? await apiSaveOrganization(validation.values)
+    : localSaveOrganization(validation.values);
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('idcms:organization-changed'));
+  return orgCache;
+}
 export const getPublicMember = usingApi ? apiGetPublicMember : localGetMember;
 
 /** Clear the caches back to whatever localStorage holds (development helper). */
-export function resetOrganization() {
-  orgCache = localResetOrganization();
+export async function resetOrganization() {
+  orgCache = usingApi
+    ? await apiSaveOrganization(organizationDefaults)
+    : localResetOrganization();
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('idcms:organization-changed'));
   return orgCache;
 }
 
@@ -231,7 +252,7 @@ export function resetOrganization() {
  */
 export async function renewMember(rowId, validUntil) {
   const current = await getMemberByRowId(rowId);
-  if (!current) return null;
+  if (!current) throw new Error('That member no longer exists.');
   return updateMember(rowId, {
     validFrom: toISODate(today()),
     validUntil: toISODate(validUntil),

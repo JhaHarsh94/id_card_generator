@@ -1,0 +1,27 @@
+/* Shared narrow-screen rules: allow content to wrap instead of clipping it. */
+.pagehead__title, .sidebar__org-name { overflow-wrap: anywhere; }
+.card-head { flex-wrap: wrap; gap: 10px; }
+.card-body, .field, .photo-actions { min-width: 0; }
+.row > input { min-width: 0; }
+
+@media (max-width: 760px) {
+  .pagehead__actions { flex-wrap: wrap; }
+  .verify-lookup, .lookup-result > .row { flex-wrap: wrap; }
+  .verify__top { flex-wrap: wrap; gap: 12px; }
+  .photo-actions > .row { flex-wrap: wrap; }
+  .usermenu__panel { max-width: calc(100vw - 32px); }
+}
+
+@media (max-width: 640px) {
+  .input, .select, .textarea, .admin-search__field { font-size: 16px; }
+  .btn { min-height: 44px; }
+  .btn-icon { min-width: 44px; }
+  .admin__header-tools { gap: 6px; }
+  .admin__site-link { padding: 8px; }
+  .card-head, .card-body { padding: 16px; }
+  .details-card, .preview-stage { padding: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

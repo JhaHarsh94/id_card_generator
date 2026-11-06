@@ -28,16 +28,10 @@ export default async function handler(req, res) {
   }
 
   if (!sameOrigin(req)) return fail(res, 403, 'FORBIDDEN', 'Request rejected.');
-  const body = await readBody(req);
+  const body = await readBody(req, res);
+  if (!body) return;
 
-  if (!body.memberId || !String(body.memberId).trim()) {
-    return fail(res, 400, 'INVALID', 'A member number is required.');
-  }
-  if (!body.fullName || !String(body.fullName).trim()) {
-    return fail(res, 400, 'INVALID', 'A member name is required.');
-  }
-
-  const { values, problems } = pickWritable(body);
+  const { values, problems } = pickWritable(body, { requireComplete: true });
   if (problems.length) return fail(res, 400, 'INVALID', problems[0]);
 
   const columns = [...Object.keys(values), 'created_by'];

@@ -38,10 +38,12 @@ export function suggestNextId(config, existing = []) {
   const numbers = existing
     .map((id) => String(id ?? '').trim())
     .filter((id) => id.startsWith(prefix) || prefix === '')
-    .map((id) => Number(id.slice(prefix.length)))
-    .filter((n) => Number.isInteger(n) && n >= 0);
+    .map((id) => id.slice(prefix.length))
+    .filter((suffix) => /^\d+$/.test(suffix))
+    .map(Number)
+    .filter((n) => Number.isSafeInteger(n) && n >= 0);
 
-  const highest = numbers.length ? Math.max(...numbers) : (config.idStart ?? 1) - 1;
+  const highest = numbers.reduce((max, value) => Math.max(max, value), (config.idStart ?? 1) - 1);
   return formatMemberId(config, Math.max(0, highest + 1 - (config.idStart ?? 1)));
 }
 

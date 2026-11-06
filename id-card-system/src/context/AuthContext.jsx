@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AuthContext } from './auth-context';
 import { getSession, onAuthChange, signIn, signOut } from '../services/auth';
+import { hydrateStores } from '../services/members';
 
 /**
  * AuthProvider
@@ -16,8 +17,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let alive = true;
 
-    getSession()
-      .then((session) => {
+    Promise.all([getSession(), hydrateStores()])
+      .then(([session]) => {
         if (!alive) return;
         setUser(session);
         setStatus(session ? 'authed' : 'anonymous');
@@ -55,9 +56,12 @@ export function AuthProvider({ children }) {
         return result;
       },
       async logout() {
-        await signOut();
-        setUser(null);
-        setStatus('anonymous');
+        const result = await signOut();
+        if (result.ok) {
+          setUser(null);
+          setStatus('anonymous');
+        }
+        return result;
       },
     }),
     [user, status],

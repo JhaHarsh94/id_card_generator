@@ -69,6 +69,7 @@ export default function Members() {
 
   const [members, setMembers] = useState(null);
   const [error, setError] = useState('');
+  const [mutationError, setMutationError] = useState('');
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState(0);
   const [term, setTerm] = useState(q);
@@ -93,9 +94,8 @@ export default function Members() {
 
   useEffect(() => {
     let alive = true;
-    setError('');
     listMembers()
-      .then((rows) => alive && setMembers(rows))
+      .then((rows) => { if (alive) { setMembers(rows); setError(''); } })
       .catch(() => alive && setError('The member list could not be loaded.'));
     return () => { alive = false; };
   }, [token]);
@@ -103,7 +103,11 @@ export default function Members() {
   // A term arriving from elsewhere (the toolbar search) must replace whatever is
   // in the box. Typing does not trigger this, because the term only changes here
   // once it has already been committed to the URL.
-  useEffect(() => { setTerm(q); }, [q]);
+  const [lastQuery, setLastQuery] = useState(q);
+  if (lastQuery !== q) {
+    setLastQuery(q);
+    setTerm(q);
+  }
 
   // Typing is debounced before it reaches the URL: pushing a history entry per
   // keystroke would fill the Back stack and re-filter on every character.
@@ -123,7 +127,12 @@ export default function Members() {
 
   // A changed result set invalidates a row selection carried over from the
   // previous filter.
-  useEffect(() => { setSelected(new Set()); }, [q, statusParam]);
+  const selectionFilter = `${q}\u0000${statusParam}`;
+  const [lastFilter, setLastFilter] = useState(selectionFilter);
+  if (lastFilter !== selectionFilter) {
+    setLastFilter(selectionFilter);
+    setSelected(new Set());
+  }
 
   const counts = useMemo(() => summarise(members ?? []), [members]);
 
@@ -219,12 +228,15 @@ export default function Members() {
     if (!ok) return;
 
     setBusy(true);
+    setMutationError('');
     try {
-      await Promise.all(chosen.map((m) => revokeMember(m.id, 'Bulk revocation from the members list')));
-      setSelected(new Set());
+      const outcomes = await Promise.allSettled(chosen.map((m) => revokeMember(m.id, 'Bulk revocation from the members list')));
+      const failed = chosen.filter((_member, index) => outcomes[index].status === 'rejected');
+      setSelected(new Set(failed.map((member) => member.id)));
+      if (failed.length) setMutationError(`${failed.length} card(s) could not be revoked. Successful changes were saved; retry the selected cards.`);
       setToken((t) => t + 1);
     } catch {
-      setError('Some cards could not be revoked. Please try again.');
+      setMutationError('Some cards could not be revoked. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -257,6 +269,7 @@ export default function Members() {
         </Link>
       </PageHeader>
 
+      {mutationError && <p className="banner banner-error" role="alert">{mutationError}</p>}
       <div className="card">
         {/* ---- controls ---------------------------------------------------- */}
         <div className="toolbar">

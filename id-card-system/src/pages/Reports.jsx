@@ -46,9 +46,8 @@ export default function Reports() {
 
   useEffect(() => {
     let alive = true;
-    setError('');
     listMembers()
-      .then((rows) => alive && setMembers(rows))
+      .then((rows) => { if (alive) { setMembers(rows); setError(''); } })
       .catch(() => alive && setError('The register could not be loaded.'));
     return () => { alive = false; };
   }, [token]);

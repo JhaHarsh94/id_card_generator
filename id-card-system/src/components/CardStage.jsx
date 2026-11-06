@@ -5,7 +5,7 @@ import IDCardTemplate from './IDCard/IDCardTemplate';
 /**
  * CardStage
  * ---------------------------------------------------------------------------
- * Renders the locked IDCardTemplate at a fixed 856x540 canvas and uniformly
+ * Renders the locked IDCardTemplate at its fixed design canvas and uniformly
  * scales it to fit its container.
  *
  * Why a transform rather than a fluid width: the card's internal layout is

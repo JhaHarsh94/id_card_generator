@@ -4,7 +4,7 @@ import {
   UserPlus, Download, FileText, Printer, Share2, Trash2, Copy, Check, AlertCircle,
 } from 'lucide-react';
 import CardStage from '../components/CardStage';
-import { getOrganization, createMember, existingMemberIds } from '../services/members';
+import { getOrganization, createMember, updateMember, existingMemberIds } from '../services/members';
 import { validateMemberForm, validateImageFile, checkImageDimensions } from '../utils/validation';
 import { compressImage, readAsDataUrl, readSize, formatBytes } from '../utils/imageProcessing';
 import { addMonths, toISODate, today } from '../utils/date';
@@ -40,8 +40,11 @@ export default function SimplePage() {
   const [errors, setErrors] = useState({});
   const [photoError, setPhotoError] = useState('');
   const [photoSaved, setPhotoSaved] = useState(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [saved, setSaved] = useState(null);
+  const [savedValues, setSavedValues] = useState(null);
+  const [noticeKind, setNoticeKind] = useState('warn');
   const [busy, setBusy] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -56,7 +59,7 @@ export default function SimplePage() {
 
   const set = (key) => (e) => setValues((v) => ({ ...v, [key]: e.target.value }));
 
-  const ready = String(values.fullName ?? '').trim().length > 0;
+  const ready = Boolean(saved && savedValues === values);
 
   async function handlePhoto(e) {
     const file = e.target.files?.[0];
@@ -69,6 +72,7 @@ export default function SimplePage() {
     if (!check.ok) { setPhotoError(check.message); return; }
 
     try {
+      setPhotoBusy(true);
       const raw = await readAsDataUrl(file);
       const { width, height } = await readSize(raw);
       const dims = checkImageDimensions(width, height);
@@ -81,20 +85,26 @@ export default function SimplePage() {
       setPhotoSaved(bytes);
     } catch {
       setPhotoError('That photo could not be read.');
+    } finally {
+      setPhotoBusy(false);
     }
   }
 
   /** Persist so the member appears in the admin area and the verify page. */
-  async function handleSave() {
-    const result = validateMemberForm(values, existingMemberIds());
+  async function handleSave(event) {
+    event?.preventDefault();
+    if (busy || photoBusy) return;
+    const result = validateMemberForm(values, existingMemberIds(), saved?.memberId);
     setErrors(result.errors);
     if (!result.ok) {
       setNotice('Please fill in the name, designation, state and valid-up-to date.');
+      setNoticeKind('warn');
+      document.getElementById(`s-${result.firstField}`)?.focus();
       return;
     }
     setBusy('save');
     try {
-      const record = await createMember({
+      const payload = {
         memberId: String(values.memberId).trim(),
         fullName: String(values.fullName).trim(),
         designation: String(values.designation).trim(),
@@ -102,15 +112,20 @@ export default function SimplePage() {
         district: String(values.district).trim(),
         photoUrl: values.photoUrl,
         photoFile: values.photoFile,
-        validFrom: toISODate(today()),
+        validFrom: saved?.validFrom || toISODate(today()),
         validUntil: toISODate(values.validUntil),
-        status: 'active',
-        revocationReason: null,
-      });
-      setSaved(record.memberId);
+      };
+      const record = saved
+        ? await updateMember(saved.id, payload)
+        : await createMember({ ...payload, status: 'active', revocationReason: null });
+      setSaved(record);
+      setSavedValues(values);
+      setNoticeKind('ok');
       setNotice('ID card created. You can now download, print or share it.');
-    } catch {
-      setNotice('Could not create the card. Please try again.');
+    } catch (error) {
+      setNoticeKind('warn');
+      if (error.code === 'DUPLICATE_ID') setErrors({ memberId: 'That ID number is already assigned.' });
+      setNotice(error.message || 'Could not save the card. Please try again.');
     } finally {
       setBusy('');
     }
@@ -127,18 +142,20 @@ export default function SimplePage() {
     setPhotoError('');
     setPhotoSaved(null);
     setSaved(null);
+    setSavedValues(null);
     setNotice('');
     setCopied(false);
   }
 
   async function runExport(kind) {
-    if (!cardRef.current || busy) return;
+    if (!cardRef.current || busy || photoBusy || !ready) return;
     setBusy(kind);
     try {
       if (kind === 'png') await downloadCardPng(cardRef.current, values);
       else if (kind === 'pdf') await downloadCardPdf(cardRef.current, values);
       else if (kind === 'print') await printCard(cardRef.current, values, { organization });
     } catch (err) {
+      setNoticeKind('warn');
       setNotice(err.message);
     } finally {
       setBusy('');
@@ -146,11 +163,11 @@ export default function SimplePage() {
   }
 
   async function handleShare() {
-    if (!cardRef.current || busy) return;
+    if (!cardRef.current || busy || photoBusy || !ready) return;
     setBusy('share');
     try {
       const result = await shareCard(cardRef.current, values, {
-        verifyUrl: saved ? buildVerifyUrl(saved) : null,
+        verifyUrl: saved ? buildVerifyUrl(saved.memberId, organization.verifyBaseUrl) : null,
         organization,
         // Share sheet unavailable — offer the image file plus the link instead.
         fallback: async ({ dataUrl, verifyUrl }) => {
@@ -161,7 +178,10 @@ export default function SimplePage() {
             link.click();
           }
           if (verifyUrl) {
-            try { await navigator.clipboard.writeText(verifyUrl); setCopied(true); } catch { /* ignore */ }
+            try { await navigator.clipboard.writeText(verifyUrl); setCopied(true); } catch {
+              setNotice('Card image downloaded. Use the verification link below to copy it manually.');
+              return;
+            }
           }
           setNotice(
             verifyUrl
@@ -172,6 +192,7 @@ export default function SimplePage() {
       });
       if (result === 'shared') setNotice('Card shared.');
     } catch (err) {
+      setNoticeKind('warn');
       setNotice(err.message);
     } finally {
       setBusy('');
@@ -181,7 +202,7 @@ export default function SimplePage() {
   async function copyLink() {
     if (!saved) return;
     try {
-      await navigator.clipboard.writeText(buildVerifyUrl(saved));
+      await navigator.clipboard.writeText(buildVerifyUrl(saved.memberId, organization.verifyBaseUrl));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -216,25 +237,26 @@ export default function SimplePage() {
         </p>
 
         {notice ? (
-          <div className={`banner banner-${saved ? 'ok' : 'warn'}`} role="status">
-            {saved ? <Check size={17} /> : <AlertCircle size={17} />}
+          <div className={`banner banner-${noticeKind}`} role="status">
+            {noticeKind === 'ok' ? <Check size={17} /> : <AlertCircle size={17} />}
             <span>{notice}</span>
           </div>
         ) : null}
 
         <div className="simple__grid">
           {/* ---- form ---- */}
-          <section className="simple__card">
+          <form className="simple__card" onSubmit={handleSave} noValidate>
             <h2 className="simple__card-title">
               <UserPlus size={17} /> सदस्य की जानकारी
             </h2>
 
-            <div className="simple__fields">
+            <fieldset className="simple__fields" disabled={!!busy}>
               <div className="field">
                 <label className="label" htmlFor="s-fullName">नाम<span className="req">*</span></label>
                 <input id="s-fullName" className="input" value={values.fullName}
                   onChange={set('fullName')} placeholder="सुनीता देवी"
                   aria-invalid={Boolean(errors.fullName)} autoComplete="off" />
+                {errors.fullName && <span className="field-error">{errors.fullName}</span>}
               </div>
 
               <div className="field">
@@ -242,6 +264,7 @@ export default function SimplePage() {
                 <input id="s-designation" className="input" value={values.designation}
                   onChange={set('designation')} placeholder="प्रधान जिला अध्यक्ष"
                   aria-invalid={Boolean(errors.designation)} autoComplete="off" />
+                {errors.designation && <span className="field-error">{errors.designation}</span>}
               </div>
 
               <div className="field">
@@ -249,6 +272,7 @@ export default function SimplePage() {
                 <input id="s-state" className="input" value={values.state}
                   onChange={set('state')} placeholder="उत्तर प्रदेश"
                   list="simple-states" aria-invalid={Boolean(errors.state)} autoComplete="off" />
+                {errors.state && <span className="field-error">{errors.state}</span>}
                 <datalist id="simple-states">
                   <option value="उत्तर प्रदेश" /><option value="राजस्थान" />
                   <option value="मध्य प्रदेश" /><option value="बिहार" />
@@ -260,12 +284,14 @@ export default function SimplePage() {
                 <label className="label" htmlFor="s-district">जिला</label>
                 <input id="s-district" className="input" value={values.district}
                   onChange={set('district')} placeholder="बागपत" autoComplete="off" />
+                {errors.district && <span className="field-error">{errors.district}</span>}
               </div>
 
               <div className="field">
                 <label className="label" htmlFor="s-memberId">ID No.</label>
                 <input id="s-memberId" className="input text-mono" value={values.memberId}
-                  onChange={set('memberId')} autoComplete="off" spellCheck={false} />
+                  onChange={set('memberId')} autoComplete="off" spellCheck={false} disabled={Boolean(saved)} maxLength={24} />
+                {errors.memberId && <span className="field-error">{errors.memberId}</span>}
               </div>
 
               <div className="field">
@@ -274,6 +300,7 @@ export default function SimplePage() {
                 </label>
                 <input id="s-validUntil" type="date" className="input" value={values.validUntil}
                   onChange={set('validUntil')} aria-invalid={Boolean(errors.validUntil)} />
+                {errors.validUntil && <span className="field-error">{errors.validUntil}</span>}
               </div>
 
               {/* ---- photo ---- */}
@@ -290,11 +317,13 @@ export default function SimplePage() {
                       onChange={handlePhoto} className="visually-hidden" />
                     <div className="row gap-2 wrap">
                       <button type="button" className="btn btn-secondary btn-sm"
+                        disabled={photoBusy}
                         onClick={() => fileRef.current?.click()}>
                         {values.photoUrl ? 'बदलें' : 'फोटो चुनें'}
                       </button>
                       {values.photoUrl ? (
                         <button type="button" className="btn btn-danger-ghost btn-sm"
+                          disabled={photoBusy}
                           onClick={() => setValues((v) => ({ ...v, photoUrl: null, photoFile: null }))}>
                           <Trash2 size={14} /> हटाएं
                         </button>
@@ -310,17 +339,17 @@ export default function SimplePage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </fieldset>
 
             <div className="simple__actions">
-              <button type="button" className="btn btn-primary btn-lg" onClick={handleSave} disabled={!!busy}>
-                {busy === 'save' ? <><span className="spinner" /> बना रहे…</> : 'ID कार्ड बनाएं'}
+              <button type="submit" className="btn btn-primary btn-lg" disabled={!!busy || photoBusy || ready}>
+                {busy === 'save' ? <><span className="spinner" /> सहेज रहे…</> : saved ? 'बदलाव सहेजें' : 'ID कार्ड बनाएं'}
               </button>
-              <button type="button" className="btn btn-ghost btn-lg" onClick={handleReset} disabled={!!busy}>
+              <button type="button" className="btn btn-ghost btn-lg" onClick={handleReset} disabled={!!busy || photoBusy}>
                 <Trash2 size={16} /> साफ़ करें
               </button>
             </div>
-          </section>
+          </form>
 
           {/* ---- card + actions ---- */}
           <section className="simple__card">
@@ -339,9 +368,10 @@ export default function SimplePage() {
                   validUntil: values.validUntil,
                   photoUrl: values.photoUrl,
                 }}
-                verifyUrl={values.memberId ? buildVerifyUrl(values.memberId) : null}
+                verifyUrl={saved ? buildVerifyUrl(saved.memberId, organization.verifyBaseUrl) : null}
               />
             </div>
+            {!ready && <p className="field-hint">Save the card and any changes before downloading, printing or sharing.</p>}
 
             <div className="simple__buttons">
               <button type="button" className="btn btn-primary" onClick={() => runExport('png')}
@@ -365,7 +395,7 @@ export default function SimplePage() {
               <div className="simple__verify">
                 <span className="simple__verify-label">QR scan करने पर खुलेगा</span>
                 <div className="row gap-2">
-                  <input className="input text-mono text-sm" readOnly value={buildVerifyUrl(saved)} />
+                  <input className="input text-mono text-sm" readOnly value={buildVerifyUrl(saved.memberId, organization.verifyBaseUrl)} aria-label="Verification link" />
                   <button type="button" className="btn btn-secondary btn-icon"
                     onClick={copyLink} aria-label="Copy link">
                     {copied ? <Check size={16} /> : <Copy size={16} />}

@@ -1,3 +1,6 @@
+import { validateMemberForm } from '../../src/utils/validation.js';
+import { deriveStatus } from '../../src/utils/status.js';
+
 /**
  * Row <-> app-object mapping for the API.
  *
@@ -57,13 +60,32 @@ export const MAX_PHOTO_BYTES = 1_500_000;
  * Returns { values, problems } so the caller can reject with a useful message
  * instead of letting Postgres throw "column does not exist".
  */
-export function pickWritable(payload) {
+export function pickWritable(payload, { current = {}, requireComplete = false } = {}) {
   const values = {};
   const problems = [];
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { values, problems: ['Send a JSON object with the member details.'] };
+  }
 
   for (const [key, column] of Object.entries(WRITABLE_COLUMNS)) {
     if (payload[key] === undefined) continue;
-    values[column] = payload[key];
+    const value = payload[key];
+    if (key === 'photoUrl') {
+      if (value !== null && (typeof value !== 'string'
+        || !/^(data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/]+=*|https:\/\/[^\s]+)$/.test(value))) {
+        problems.push('The photo must be an uploaded JPG, PNG or WebP image or an HTTPS image URL.');
+        continue;
+      }
+    } else if (key === 'validFrom' || key === 'validUntil') {
+      if (value !== null && value !== '' && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))) {
+        problems.push('Dates must use YYYY-MM-DD.');
+        continue;
+      }
+    } else if (value !== null && typeof value !== 'string') {
+      problems.push(`${key} must be text.`);
+      continue;
+    }
+    values[column] = typeof value === 'string' ? value.trim() : value;
   }
 
   if (values.photo_url && typeof values.photo_url === 'string'
@@ -71,8 +93,18 @@ export function pickWritable(payload) {
     problems.push('The photo is too large. Please use a smaller image.');
   }
 
-  if (values.status && !['active', 'expired', 'revoked'].includes(values.status)) {
-    delete values.status;
+  if (Object.hasOwn(values, 'status') && !['active', 'expired', 'revoked'].includes(values.status)) {
+    problems.push('Choose active, expired or revoked status.');
+  }
+
+  if (values.revocation_reason?.length > 500) problems.push('The revocation reason must be 500 characters or fewer.');
+  if (requireComplete) {
+    const candidate = { ...current };
+    for (const [key, column] of Object.entries(WRITABLE_COLUMNS)) {
+      if (Object.hasOwn(values, column)) candidate[key] = values[column];
+    }
+    const validation = validateMemberForm(candidate);
+    problems.push(...Object.values(validation.errors));
   }
 
   // Dates must arrive as YYYY-MM-DD; a Date object or a timestamp is rejected
@@ -96,9 +128,5 @@ export function pickWritable(payload) {
  * public QR page can never disagree.
  */
 export function effectiveStatus(row) {
-  if (row.status === 'revoked') return 'revoked';
-  if (!row.valid_until) return row.status === 'expired' ? 'expired' : 'active';
-  const today = new Date().toISOString().slice(0, 10);
-  if (String(row.valid_until) < today) return 'expired';
-  return 'active';
+  return deriveStatus({ status: row.status, validUntil: row.valid_until });
 }

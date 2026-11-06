@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 import { readdirSync, statSync } from 'node:fs'
-import { dirname, join, relative, resolve, sep } from 'node:path'
+import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const projectRoot = dirname(fileURLToPath(import.meta.url))
@@ -118,6 +118,10 @@ function apiDevServer(mode) {
 }
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => ({
-  plugins: [react(), apiDevServer(mode)],
-}))
+export default defineConfig(({ mode, command }) => {
+  const env = loadEnv(mode, projectRoot, '')
+  if (command === 'build' && (process.env.VITE_DATA_BACKEND ?? env.VITE_DATA_BACKEND) === 'local') {
+    throw new Error('Production builds require the API backend. Remove VITE_DATA_BACKEND=local.')
+  }
+  return { plugins: [react(), apiDevServer(mode)] }
+})

@@ -1,0 +1,8 @@
+.card-preview { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.card-preview > h1 { margin: 0 0 24px; text-align: center; font-size: clamp(22px, 3vw, 34px); color: #1c2140; }
+.card-preview__hint { margin: 20px 0; text-align: center; color: #5a6285; }
+.card-preview__controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 24px 0; }
+.card-preview__controls label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #333a5c; min-width: 0; }
+.card-preview__controls input { max-width: 100%; }
+.card-preview__actions { display: flex; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 600px) { .card-preview { padding: 16px; } }

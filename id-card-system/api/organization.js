@@ -1,6 +1,7 @@
 import { dbError, fail, json, readBody, requireMethod, sameOrigin } from './_lib/respond.js';
 import { requireAdmin } from './_lib/auth.js';
 import { query } from './_lib/pg.js';
+import { validateOrganization } from '../shared/organization.js';
 
 /**
  * /api/organization
@@ -32,13 +33,16 @@ export default async function handler(req, res) {
   if (!admin) return;
   if (!sameOrigin(req)) return fail(res, 403, 'FORBIDDEN', 'Request rejected.');
 
-  const body = await readBody(req);
+  const body = await readBody(req, res);
+  if (!body) return;
   const data = body && typeof body.data === 'object' && body.data ? body.data : null;
   if (!data) return fail(res, 400, 'INVALID', 'Nothing to save.');
 
   // Saving real settings always drops the demo watermark; it is never a value
   // the operator sets deliberately.
-  const next = { ...data, isDemo: false };
+  const validation = validateOrganization(data);
+  if (Object.keys(validation.errors).length) return fail(res, 400, 'INVALID', Object.values(validation.errors)[0]);
+  const next = { ...validation.values, isDemo: false };
 
   try {
     const rows = await query(

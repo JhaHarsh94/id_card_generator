@@ -1,132 +1,111 @@
-# Deploying
+# Deploy to Vercel
 
-The app is a Vite front end plus serverless functions in `api/`, all served by
-Vercel. There is no server of your own to run and no build step beyond the one
-Vercel already performs.
+The application consists of the Vite frontend and Node.js functions in **api/**. Use Node.js **22.x**, set the Vercel project root to **id-card-system**, and keep **vercel.json** in that directory.
 
----
+## 1. Prepare the database
 
-## Where it is now
+Create a PostgreSQL database (Neon is supported). Copy **.env.example** to **.env.local** and set:
 
-| | |
-|---|---|
-| Site | <https://id-card-generator-chi-one.vercel.app> |
-| Vercel project | `id-card-generator` (root directory `id-card-system`) |
-| Database | Neon (Postgres), project `id-card-system` |
-| Sign-in | `admin@punamkabira.org` / *(seeded password - kept out of this public repo)* |
-
-Change the seeded password from **Settings → Security** after signing in.
-
----
-
-## Deploying
-
-The repository root holds the Vercel link file (`.vercel/project.json`), so the
-command runs from the **parent** folder, not from `id-card-system`:
-
-```bash
-cd C:\Users\hjha7\OneDrive\Desktop\id
-vercel deploy --prod --yes --scope jhaharsh94s-projects
+```dotenv
+DATABASE_URL=postgresql://USER:PASSWORD@YOUR-POOLED-HOST/DATABASE?sslmode=require
+VITE_DATA_BACKEND=api
+IDCMS_ADMIN_EMAIL=your-admin@example.org
+IDCMS_ADMIN_PASSWORD=your-unique-password-at-least-12-characters
+IDCMS_ADMIN_NAME=Administrator
 ```
 
-Expect `▲ Aliased https://id-card-generator-chi-one.vercel.app`.
+Keep this file private. Only VITE-prefixed variables enter the frontend bundle. DATABASE_URL and administrator credentials must stay server-side. Use Neon's pooled connection URL for serverless deployments.
 
----
+From **id-card-system** run:
 
-## Environment variables
-
-Set in the Vercel dashboard (Project → Settings → Environment Variables), or
-with the CLI.
-
-| Name | Where | Value |
-|---|---|---|
-| `DATABASE_URL` | Production, Development | the **pooled** Neon connection string |
-| `VITE_DATA_BACKEND` | Production, Development | `api` |
-
-Notes:
-
-- Use the **pooled** endpoint (host contains `-pooler`). Functions open a
-  connection per request; a direct endpoint would run out of connections.
-- `DATABASE_URL` must **never** be prefixed `VITE_`. Vite inlines every `VITE_`
-  variable into the public JavaScript bundle, where any visitor can read it.
-  Nothing in the browser should ever see a database credential — it calls
-  `/api` and that is all.
-- `VITE_DATA_BACKEND` bakes in at build time: unset means `api` for
-  `npm run build` and `local` for `npm run dev`. Setting it to `api` explicitly
-  just makes the intent obvious.
-- Preview deployments are not configured (the variable cannot be attached to the
-  production branch `main`), so a preview build would have no database. Deploy to
-  production.
-
----
-
-## What is public and what is not
-
-The register holds identity documents, so only these routes answer without a
-session:
-
-- `/login`
-- `/forgot-password`
-- `/verify/:memberId` — the QR destination. A person scanning a card has no
-  account, so this must never require one.
-
-Everything else, including the landing page and `/generate`, redirects to
-`/login`. There is no client-side "admin" flag to forge; the check is the
-session cookie, verified server-side.
-
-There is no mail service wired up, so password recovery is **the administrator
-resetting it** — from Settings → Security, or on the server with
-`node scripts/make-admin.mjs <password> <email> <name>`.
-
----
-
-## ⚠️ The API routing constraint
-
-`vercel.json` carries a catch-all rewrite (`/(.*)` → `/index.html`) so client
-routes such as `/verify/0095030` work on refresh.
-
-**That rewrite shadows every dynamic function route.** `/api/members/:id`
-silently returns the HTML shell — a 200 whose body is a page, which a `fetch()`
-would then try to parse as JSON.
-
-For that reason **every file in `api/` must be a flat path**:
-
-```
-api/members.js             ✅   /api/members
-api/member-row.js          ✅   /api/member-row?id=…
-api/members/[id].js        ❌   shadowed
+```sh
+npm ci
+npm run db:setup
+npm run admin:create
 ```
 
-Pass identifiers as query parameters (`?id=`, `?memberId=`), not path segments.
-This is the one part of the API layout that looks arbitrary and is not.
+Database setup runs **database/schema.sql**. It creates the member, organisation, administrator and session tables plus indexes and an update timestamp trigger. It does not insert sample members, delete records or change existing administrator passwords. Administrator creation inserts the account only if it does not already exist and stores a salted scrypt hash.
 
----
+For an existing installation, back up the database and review the schema before applying it. The setup creates missing tables; it is not a migration of incompatible existing columns.
 
-## Verifying a deployment
+## 2. Verify locally
 
-```bash
-node scripts/test-api.mjs     # handlers against the real database, unit-style
-node scripts/test-prod.mjs    # the deployed API, session + CRUD + public verify
-node scripts/check-admin.mjs  # the deployed app in a real browser
-```
+With the API environment configured, run:
 
-`check-admin.mjs` needs headless Chrome listening on port 9222:
-
-```bash
-Start-Process "C:\Program Files\Google\Chrome\Application\chrome.exe" -ArgumentList `
-  '--headless=new','--remote-debugging-port=9222',
-  '--user-data-dir=%TEMP%\chrome-cdp','--no-first-run','about:blank'
-node scripts/check-admin.mjs
-```
-
-It seeds a few members, signs in through the real form, and asserts the
-dashboard and table actually show them — then signs out and removes them, so it
-leaves the database exactly as it found it.
-
-### First run on a fresh machine
-
-```bash
-cp .env.example .env.local      # then put DATABASE_URL in it
-npm install
+```sh
 npm run dev
 ```
+
+Sign in, create a test member with a photo, check Hindi text and download both PNG and PDF. Change settings and reload to confirm persistence. The development server mounts the same API handlers used in production.
+
+Run the offline checks before deployment:
+
+```sh
+npm run check
+```
+
+A normal production build always uses the server API. A production build with VITE_DATA_BACKEND=local is rejected, so browser-only development storage cannot accidentally become the deployed register.
+
+**npm run preview** serves the built frontend only; it does not emulate serverless functions. Use it for layout and route checks, or use a Vercel preview for the complete application.
+
+## 3. Configure Vercel
+
+Import the repository or update the existing project:
+
+| Setting | Value |
+| --- | --- |
+| Root directory | id-card-system |
+| Framework | Vite |
+| Node.js | 22.x |
+| Install command | npm ci |
+| Build command | npm run build |
+| Output directory | dist |
+
+Set **DATABASE_URL** and **VITE_DATA_BACKEND=api** for every environment you intend to use (Production and, when used, Preview/Development). A preview should use a separate test database. Administrator setup variables are only needed locally for the setup command.
+
+Deploy through the Vercel project dashboard or your existing CI integration. Do not upload only dist to a static host: login, saving and verification require the API functions.
+
+The checked-in SPA rewrite preserves React routes on refresh. API identifiers use the existing query-based routes, for example **/api/member?memberId=PKSDST0001**. Keep **api/_lib/** as shared code rather than public functions.
+
+## 4. Check the deployment
+
+- **/api/health** returns JSON with ok=true. This verifies the function runtime, not database connectivity.
+- **/login** loads and a fresh browser is redirected there from **/admin** and **/generate**.
+- Anonymous **/api/members** requests return 401.
+- Sign in with the administrator created above; create a temporary member, reload and confirm it remains.
+- Download a PNG (2500 × 1500) and PDF (85.6 × 51.36 mm). Both preserve the reference card's 5:3 aspect ratio.
+- Print on A4 landscape at 100% with background graphics enabled. The card retains its physical size and is centred on the sheet.
+- Open **/verify/<memberId>** while signed out. It shows membership status without publishing the photograph or internal notes.
+- Confirm **/dev/card** is unavailable in production, then remove the temporary member.
+
+The original reference is a photographed screen. Exact portrait and handwritten-signature reproduction requires the original image assets. The development preview includes an AI-generated fictional sample portrait; real member records use the photograph uploaded for that member.
+
+## Browser regression checks
+
+Start the local development server in browser-storage mode (leave VITE_DATA_BACKEND unset). Start a separate headless Chrome instance with remote debugging on port 9222 and an isolated profile, then run:
+
+```sh
+node scripts/check-browser.mjs http://127.0.0.1:5173
+```
+
+The script checks desktop/mobile preview, long names, photo rendering, PNG/PDF exports, print markup and the local generator/settings flow. It writes results to the ignored **.artifacts/** directory and only changes data in that isolated browser profile.
+
+### Complete API-backed browser checks
+
+With the same isolated Chrome instance listening on port 9222, start a disposable test application in another terminal:
+
+```sh
+npm run dev:test-api
+```
+
+Then run:
+
+```sh
+npm run test:system
+```
+
+The test application binds only to **127.0.0.1:5174**, runs the real API handlers against an in-memory PostgreSQL database through [PGlite](https://pglite.dev/docs/api), and creates a test administrator automatically. It never connects to DATABASE_URL from .env.local. Stop it with Ctrl+C when finished; its records are disposable.
+
+System checks cover login, creation with a portrait, editing, renewal, revocation, generator saves, outage/retry handling, session expiry and 40 page/viewport combinations at 320, 390, 768 and 1440 pixels. Screenshots and results are written to **.artifacts/system/**.
+
+Legacy scripts named **test-api**, **test-prod** and **check-admin** require database credentials and can modify the target database. They are not part of npm run check. Use them only against a deliberately selected test environment.

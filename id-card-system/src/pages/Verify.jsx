@@ -32,7 +32,8 @@ import '../styles/verify.css';
 export default function Verify() {
   const { memberId } = useParams();
   const organization = getOrganization();
-  const lookedUp = decodeURIComponent(memberId ?? '');
+  const lookedUp = memberId ?? '';
+  const [retry, setRetry] = useState(0);
 
   const [state, setState] = useState({
     phase: 'loading',
@@ -67,7 +68,7 @@ export default function Verify() {
       .catch(() => {
         if (alive) {
           setState({
-            phase: 'missing',
+            phase: 'error',
             member: null,
             status: null,
             checkedOn: new Date().toISOString(),
@@ -76,7 +77,7 @@ export default function Verify() {
       });
 
     return () => { alive = false; };
-  }, [lookedUp]);
+  }, [lookedUp, retry]);
 
   const { phase, member, status, checkedOn } = state;
 
@@ -141,14 +142,21 @@ export default function Verify() {
               <div className={`verify__status verify__status--${view?.cls ?? 'none'}`}>
                 <Icon size={40} strokeWidth={2.2} />
                 <div>
-                  <div className="verify__headline">{view?.headline ?? 'NOT FOUND'}</div>
+                  <div className="verify__headline">{view?.headline ?? (phase === 'error' ? 'VERIFICATION UNAVAILABLE' : 'NOT FOUND')}</div>
                   <div className="verify__note">
-                    {phase === 'missing'
+                    {phase === 'error'
+                      ? 'We could not reach the verification service. Check your connection and try again.'
+                      : phase === 'missing'
                       ? 'No ID card with this number is on record with the organisation.'
                       : view?.note}
                   </div>
                 </div>
               </div>
+              {phase === 'error' && <button type="button" className="btn btn-primary" style={{ margin: 16 }}
+                onClick={() => {
+                  setState({ phase: 'loading', member: null, status: null, checkedOn: null });
+                  setRetry((value) => value + 1);
+                }}>Try again</button>}
 
               {/* ---- details ---- */}
               {member ? (

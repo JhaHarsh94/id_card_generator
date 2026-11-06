@@ -26,19 +26,24 @@ export default function EditMember() {
   const [banner, setBanner] = useState(null);
   const [saving, setSaving] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [loadVersion, setLoadVersion] = useState(0);
+  const [rowId, setRowId] = useState(null);
 
   const organization = getOrganization();
 
   useEffect(() => {
     let alive = true;
-    getMember(decodeURIComponent(memberId))
+    getMember(memberId)
       .then((row) => {
         if (!alive) return;
+        setLoadError('');
         if (!row) {
           setNotFound(true);
           return;
         }
         setValues({
+          memberIdEditable: false,
           fullName: row.fullName ?? '',
           memberId: row.memberId ?? '',
           designation: row.designation ?? '',
@@ -51,14 +56,17 @@ export default function EditMember() {
           status: row.status ?? 'active',
           revocationReason: row.revocationReason ?? '',
         });
+        setRowId(row.id);
+        setNotFound(false);
+        setLoadError('');
       })
-      .catch(() => alive && setNotFound(true));
+      .catch((error) => { if (alive) setLoadError(error.message || 'The member could not be loaded.'); });
     return () => { alive = false; };
-  }, [memberId]);
+  }, [memberId, loadVersion]);
 
   async function handleSave(event) {
     event.preventDefault();
-    if (saving || !values) return;
+    if (saving || !values || values.photoProcessing) return;
 
     setBanner(null);
     // Exclude this member's own ID so re-saving an unchanged number is allowed.
@@ -77,7 +85,7 @@ export default function EditMember() {
     setSaving(true);
     try {
       await updateMember(
-        (await getMember(decodeURIComponent(memberId))).id,
+        rowId,
         {
           memberId: String(values.memberId).trim(),
           fullName: String(values.fullName).trim(),
@@ -98,13 +106,20 @@ export default function EditMember() {
         kind: 'error',
         text: err?.code === 'DUPLICATE_ID'
           ? 'That ID number is already assigned to another member.'
-          : 'The changes could not be saved. Please try again.',
+          : err.message || 'The changes could not be saved. Please try again.',
       });
     } finally {
       setSaving(false);
     }
   }
 
+  if (loadError) {
+    return <div className="page"><div className="error-state" role="alert">
+      <p>{loadError}</p>
+      <button className="btn btn-primary" onClick={() => setLoadVersion((version) => version + 1)}>Try again</button>
+      <Link to="/admin/members" className="btn btn-secondary">Back to members</Link>
+    </div></div>;
+  }
   if (notFound) {
     return (
       <div className="page">
@@ -155,10 +170,10 @@ export default function EditMember() {
           />
 
           <div className="form-actions">
-            <button type="submit" className="btn btn-primary btn-lg" disabled={saving}>
+            <button type="submit" className="btn btn-primary btn-lg" disabled={saving || values.photoProcessing}>
               {saving ? <><span className="spinner" /> Saving&hellip;</> : <><Save size={17} /> Save changes</>}
             </button>
-            <button type="button" className="btn btn-red btn-lg" disabled={saving}
+            <button type="button" className="btn btn-red btn-lg" disabled={saving || values.photoProcessing}
               onClick={() => {
                 const known = existingMemberIds().filter((id) => id !== values.memberId);
                 const result = validateMemberForm(values, known);
@@ -192,7 +207,7 @@ export default function EditMember() {
                   validUntil: values.validUntil,
                   photoUrl: values.photoUrl,
                 }}
-                verifyUrl={values.memberId ? buildVerifyUrl(values.memberId) : null}
+                verifyUrl={values.memberId ? buildVerifyUrl(values.memberId, organization.verifyBaseUrl) : null}
               />
             </div>
           </div>

@@ -1,465 +1,131 @@
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { COLORS } from '../../config/cardDesign';
+import { forwardRef, useLayoutEffect, useRef } from 'react';
+import { CARD, COLORS } from '../../config/cardDesign';
 import { formatDate } from '../../utils/date';
 import { buildVerifyUrl } from '../../utils/verification';
 import { useQrDataUrl } from '../../hooks/useQrDataUrl';
 import '../../styles/id-card.css';
 
-/**
- * IDCardTemplate
- * ---------------------------------------------------------------------------
- * The locked organisation member ID card.
- *
- * Not a designer: every fixed element sits at its measured position. The only
- * inputs are the member's own data and the organisation's saved settings.
- * The ref is forwarded so the card can be handed to html-to-image for export.
- */
-
-/**
- * Step the font down for long values rather than letting them overflow into
- * the photo. Thresholds are tuned against the 856 x 540 canvas.
- */
-function fit(text, md, sm) {
-  const n = String(text ?? '').trim().length;
-  if (sm && n > 34) return sm;
-  if (md && n > 22) return md;
-  return '';
-}
-
-/**
- * Shrink a single-line heading until it fits the width available to it.
- *
- * Character counts are the wrong tool for this. The trust name is a fixed
- * string whose rendered width depends on which font actually loaded - the
- * width shifted by ~7% when the self-hosted Noto replaced the Nirmala UI
- * fallback, which was enough to clip the final letter. Measuring the rendered
- * box is the only version of this that stays correct across font swaps,
- * unicode-range coverage and browser zoom.
- *
- * Returns the font size in px to apply, and re-measures when webfonts settle,
- * since the first paint measures against a fallback face.
- */
-/**
- * One shared 2D context for text measurement.
- *
- * measureText needs a font that is actually loaded to report a real advance
- * width, so callers must ensure the webfont has settled first (see
- * fontsReady below). The context is reused because creating one per measurement
- * is wasteful when a card renders several fitted headings.
- */
-let textContext = null;
-function getTextContext() {
-  if (textContext) return textContext;
-  if (typeof document === 'undefined') return null;
-  const canvas = document.createElement('canvas');
-  textContext = canvas.getContext('2d');
-  return textContext;
-}
-
-/*
- * Flips once the webfont this card renders in is genuinely available.
- *
- * `document.fonts.ready` is NOT sufficient and relying on it silently is what
- * caused the mobile overflow: with font-display: block the woff2 is fetched
- * only once something uses it, and on a phone that download finishes long
- * after `ready` has resolved. The card was therefore measured against the
- * fallback face, which is narrower than Noto, and kept a size that was too
- * large once the real font arrived.
- *
- * Making it STATE means the measuring effects below re-run through React's
- * normal dependency path. Chaining a bare promise into measure() instead
- * depends on the effect having subscribed at all, which is exactly the
- * assumption that turned out to be wrong.
- *
- * Shared implementation for both the width fitter and the column-height fitter.
- * Two hand-rolled copies of this state would resolve at slightly different
- * times, and the card would resize twice for no reason.
- */
-function useFontsReady() {
-  const [fontsReady, setFontsReady] = useState(false);
-
-  useEffect(() => {
-    const fonts = typeof document !== 'undefined' ? document.fonts : null;
-    if (!fonts) {
-      setFontsReady(true);
-      return undefined;
-    }
-
+/** Fit changing text inside its fixed slot after the self-hosted fonts load. */
+function useFittedText(ref, content) {
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return undefined;
     let cancelled = false;
-    const markReady = () => { if (!cancelled) setFontsReady(true); };
-
-    // Both weights: the size is chosen from the 900 render, but a 400 face
-    // arriving later would still reflow the text.
+    const fit = () => {
+      if (cancelled) return;
+      element.style.removeProperty('font-size');
+      let size = parseFloat(getComputedStyle(element).fontSize);
+      while ((element.scrollWidth > element.clientWidth + 1
+        || element.scrollHeight > element.clientHeight + 1) && size > 4) {
+        size -= 0.5;
+        element.style.fontSize = `${size}px`;
+      }
+    };
+    fit();
     Promise.all([
-      fonts.load('900 46px "Noto Sans Devanagari"'),
-      fonts.load('400 46px "Noto Sans Devanagari"'),
-    ]).catch(() => {}).then(markReady);
-
-    fonts.ready.then(markReady).catch(() => {});
-
+      document.fonts?.load('800 56px "Noto Sans Devanagari"'),
+      document.fonts?.load('400 28px "Noto Sans Devanagari"'),
+    ]).then(fit).catch(fit);
     return () => { cancelled = true; };
-  }, []);
-
-  return fontsReady;
+  }, [ref, content]);
 }
 
-function useFittedFontSize(ref, { max, min }) {
-  const [px, setPx] = useState(max);
-  const fontsReady = useFontsReady();
-
-  const measure = useCallback(() => {
-    const el = ref.current;
-    const host = el?.parentElement;
-    if (!el || !host) return;
-
-    const hostStyle = getComputedStyle(host);
-    const elStyle = getComputedStyle(el);
-    const num = (v) => parseFloat(v) || 0;
-
-    // The element's own padding and border consume width too - the trust name
-    // has a white frame: 2px border plus 14px padding a side. Ignoring them made
-    // the name overflow by exactly that much.
-    const frame = num(elStyle.paddingLeft) + num(elStyle.paddingRight)
-      + num(elStyle.borderLeftWidth) + num(elStyle.borderRightWidth);
-
-    const available = host.clientWidth
-      - num(hostStyle.paddingLeft) - num(hostStyle.paddingRight) - frame;
-    if (available <= 0) return;
-
-    const text = el.textContent.trim();
-    if (!text) return;
-
-    /*
-     * Reserve the width that canvas measurement does not see:
-     *   - -webkit-text-stroke grows the glyph on BOTH sides of every letter
-     *   - letter-spacing is not applied by measureText
-     * Without this the computed size still overflowed by ~23px, because the
-     * number the canvas reports is smaller than what actually gets painted.
-     */
-    const stroke = num(elStyle.webkitTextStrokeWidth);
-    const tracking = num(elStyle.letterSpacing) * text.length;
-    const usable = available - stroke * 2 - tracking - 2;
-    if (usable <= 0) return;
-
-    /*
-     * Measure with a canvas, NOT el.scrollWidth.
-     *
-     * scrollWidth reads 0 whenever the card has not been laid out yet - it sits
-     * in a stage whose width is only known after a zoom calculation, and it can
-     * be hidden while that happens. A 0 was silently treated as "it fits", so
-     * the ceiling size was kept and the name overflowed. It is worse than a
-     * crash because nothing looked wrong.
-     *
-     * measureText depends only on the font, so it is correct whether or not the
-     * element has been laid out, and it needs no DOM mutation - which also
-     * avoids fighting React over the inline font-size.
-     */
-    const ctx = getTextContext();
-    if (!ctx) return;
-
-    ctx.font = `${elStyle.fontStyle} ${elStyle.fontWeight} ${max}px ${elStyle.fontFamily}`;
-    const natural = ctx.measureText(text).width;
-    if (!natural || !Number.isFinite(natural)) return;
-
-    setPx(natural <= usable ? max : Math.max(min, Math.floor(max * (usable / natural))));
-  }, [ref, max, min]);
-
-  useLayoutEffect(() => {
-    measure();
-  }, [measure, fontsReady]);
-
-  // Re-measure whenever the available width changes.
-  useEffect(() => {
-    const host = ref.current?.parentElement;
-    if (!host || typeof ResizeObserver === 'undefined') return undefined;
-    const observer = new ResizeObserver(() => measure());
-    observer.observe(host);
-    return () => observer.disconnect();
-  }, [measure, ref]);
-
-  return px;
+function FittedText({ as: Tag = 'div', className, children }) {
+  const ref = useRef(null);
+  useFittedText(ref, children);
+  return <Tag ref={ref} className={className}>{children}</Tag>;
 }
 
-/**
- * Shrink a column just enough to keep it inside its parent.
- *
- * The identity column is absolutely positioned at a fixed offset inside the
- * fixed-height body, and every block in it is `flex: 0 0 auto`. That is correct
- * for the design - nothing may reflow - but it means content can only grow
- * downward, and the one input that grows unpredictably is the member's name: a
- * three- or four-word name wraps onto a second line and pushes the validity and
- * scope lines straight through the footer band.
- *
- * Rather than picking smaller margins that happen to fit today's longest test
- * name, the column is measured and scaled down by whatever factor is needed.
- * The proportions between the lines are preserved, so the card still reads as
- * the locked design - just a few percent smaller on the rare card that needs it.
- *
- * Units: `clientHeight` and `offsetTop` are BOTH layout pixels, unaffected by
- * the ancestor zoom transform that wraps the card for preview and export, so
- * they can be compared directly. Reading the same distances from
- * getBoundingClientRect() would silently mix scaled and unscaled units.
- */
-function useFittedColumnScale(ref, key, { min = 0.6, gap = 6 } = {}) {
-  const [scale, setScale] = useState(1);
-  const fontsReady = useFontsReady();
-
-  useLayoutEffect(() => {
-    if (!fontsReady) return;
-    const el = ref.current;
-    const host = el?.parentElement;
-    if (!el || !host) return;
-
-    const available = host.clientHeight - el.offsetTop - gap;
-    const natural = el.scrollHeight;
-    if (available <= 0 || !natural || !Number.isFinite(natural)) return;
-
-    const next = natural <= available ? 1 : Math.max(min, available / natural);
-    setScale((prev) => (Math.abs(prev - next) < 0.005 ? prev : next));
-  }, [fontsReady, ref, gap, min, key]);
-
-  return scale;
-}
-
-/**
- * splitTrustName() used to cut the trust name on the word boundary nearest the
- * middle, so each half could take the colour opposite the background beneath it.
- * The name is now a single gold colour, so there is nothing to split - the
- * helper and its markup are both gone.
- *
- * Kept here as a note rather than deleted silently: if the design ever goes
- * back to the two-colour treatment, this is what has to come back with it.
- */
-
-function IDCardTemplate(
-  { organization, member, verifyUrl = null, className = '', showDemoFlag = true },
-  ref,
+/** One fixed canvas shared by preview, PNG, PDF and print. */
+const IDCardTemplate = forwardRef(function IDCardTemplate(
+  { organization = {}, member = {}, verifyUrl = null, className = '', showDemoFlag = true }, ref,
 ) {
-  const org = organization ?? {};
-  const m = member ?? {};
-
-  // The trust name is the widest fixed element on the card and must never
-  // clip, so its size is measured rather than guessed from its length.
-  const trustNameRef = useRef(null);
-  const trustNamePx = useFittedFontSize(trustNameRef, { max: 54, min: 22 });
-
-  const {
-    name = '',
-    designation = '',
-    state = '',
-    district = '',
-    validUntil = '',
-    memberId = '',
-    photoUrl = null,
-  } = m;
-
-  /*
-   * The identity column is measured and, if the name has wrapped onto extra
-   * lines, scaled down so it cannot reach the footer. The key re-runs the
-   * measurement whenever any text in the column changes.
-   */
-  const identityRef = useRef(null);
-  const identityScale = useFittedColumnScale(
-    identityRef,
-    [name, designation, state, district, validUntil, org.scopeText].join('\u0000'),
-  );
-
-  // QR encodes ONLY the absolute public verification URL — no member or admin
-  // data. It must be absolute or a phone camera cannot resolve it.
-  const qrTarget = verifyUrl
-    ?? (org.qrEnabled !== false && memberId ? buildVerifyUrl(memberId) : null);
-  const { url: qrDataUrl } = useQrDataUrl(qrTarget, { size: 512 });
-  const showQr = Boolean(org.qrEnabled !== false && qrDataUrl);
-
-  const styleVars = useMemo(
-    () => ({
-      '--c-blue': COLORS.blue,
-      '--c-blue-dark': COLORS.blueDark,
-      '--c-red': COLORS.red,
-      '--c-red-dark': COLORS.redDark,
-      '--c-gold': COLORS.gold,
-      '--c-white': COLORS.white,
-    }),
-    [],
-  );
+  const org = organization;
+  const name = member.name || member.fullName || 'सदस्य का नाम';
+  const qrTarget = org.qrEnabled === true && member.memberId
+    ? verifyUrl || buildVerifyUrl(member.memberId, org.verifyBaseUrl)
+    : null;
+  const { url: qrDataUrl, error: qrError } = useQrDataUrl(qrTarget, { size: 256 });
 
   return (
-    <div ref={ref} className={`idcard ${className}`} style={styleVars}>
-      {showDemoFlag && org.isDemo ? (
-        <span className="idcard__demo-flag">Demo data</span>
-      ) : null}
-
-      {/* ================= HEADER (fixed) ================= */}
+    <article
+      ref={ref}
+      className={`idcard ${className}`}
+      aria-label={`Membership card — ${name}`}
+      data-qr-pending={Boolean(qrTarget && !qrDataUrl && !qrError)}
+      data-qr-error={Boolean(qrError)}
+      style={{
+        '--card-width': `${CARD.width}px`, '--card-height': `${CARD.height}px`,
+        '--c-blue': COLORS.blue, '--c-red': COLORS.red, '--c-gold': COLORS.gold,
+      }}
+    >
       <header className="idcard__header">
-        <div className="idcard__header-bg" />
-        <div className="idcard__header-accent" aria-hidden="true" />
-        <div className="idcard__header-rule" aria-hidden="true" />
-
-        <div className="idcard__header-text">
-          {/* English trust name, single gold colour with a deep extrusion.
-              It was previously split into two colours (red over the blue half,
-              white over the red half) to invert against the background. The
-              client preferred one solid colour, so the split was dropped and
-              gold chosen: it is the only hue that holds its contrast against
-              BOTH the blue and the red half of the header, and it already
-              appears in the emblem and the corner rules. */}
-          {org.trustNameEn ? (
-            <div
-              ref={trustNameRef}
-              className="idcard__trust-name"
-              style={{ fontSize: `${trustNamePx}px` }}
-            >
-              {org.trustNameEn}
-            </div>
-          ) : null}
+        <div className="idcard__corner idcard__corner--left">
+          <span>{org.registrationText || 'पंजीकरण सं०'}</span>
+          <span>{org.registrationValue || '29/2024'}</span>
         </div>
-
-        {/* Registration number, top-left corner */}
-        {org.registrationText ? (
-          <div className="idcard__corner idcard__corner--left">
-            <span className="idcard__corner-label">पंजीकरण सं०</span>
-            <span className="idcard__corner-value">{org.registrationValue ?? org.registrationText}</span>
-          </div>
-        ) : null}
-
-        {/* Member ID number, top-right corner */}
+        <FittedText className="idcard__authority">
+          {org.authorityText || 'GOVERNMENT OF UTTAR PRADESH'}
+        </FittedText>
         <div className="idcard__corner idcard__corner--right">
-          <span className="idcard__corner-label">ID No.</span>
-          <span className="idcard__corner-value">{memberId || '—'}</span>
+          <span>ID NO.</span>
+          <FittedText as="span" className="idcard__member-id">{member.memberId || '—'}</FittedText>
         </div>
-
-        {/* State authority, centred in the gap the two corner blocks leave
-            between them. It reads as the issuing authority for both numbers -
-            which is what it factually is - rather than as a third data field.
-            This used to be the first line of the footer; the client moved it
-            up here. */}
-        {org.authorityText ? (
-          <div className="idcard__authority">{org.authorityText}</div>
-        ) : null}
-
-        {/* Certification badge - omitted entirely when the organisation has none */}
-        {org.isoText ? (
-          <div className="idcard__iso">
-            <span className="idcard__iso-text">{org.isoText}</span>
-          </div>
-        ) : null}
+        <FittedText as="h2" className="idcard__trust-name">{org.name}</FittedText>
       </header>
 
-      {/* ================= BODY ================= */}
       <div className="idcard__body">
-        {/* organisation logo - fixed slot, left side */}
         <div className="idcard__logo">
-          <span className="idcard__logo-frame" aria-hidden="true" />
-          {org.logoUrl ? <img src={org.logoUrl} alt="" /> : null}
+          {org.logoUrl && <img src={org.logoUrl} alt="Trust emblem" />}
         </div>
 
-        {/* member identity - dynamic */}
-        <div
-          className="idcard__identity"
-          ref={identityRef}
-          style={identityScale < 1
-            ? { transform: `scale(${identityScale})`, transformOrigin: 'top center' }
-            : undefined}
-        >
-          <div className={`idcard__name ${fit(name, 'size-md', 'size-sm')}`}>
-            {name || '—'}
-          </div>
-
-          {designation ? (
-            <div className={`idcard__designation ${fit(designation, 'size-md', 'size-sm')}`}>
-              {designation}
-            </div>
-          ) : null}
-
-          {state ? (
-            <div className={`idcard__state ${fit(state, 'size-md', 'size-sm')}`}>
-              {state}
-            </div>
-          ) : null}
-
-          {/* District, directly under the state. It was collected on the form
-              and stored in the database but had no slot on the card, so it was
-              silently dropped. Rendered conditionally: a card with no district
-              entered must not print an empty line. */}
-          {district ? (
-            <div className={`idcard__district ${fit(district, 'size-md', 'size-sm')}`}>
-              {district}
-            </div>
-          ) : null}
-
-          <div className="idcard__validity">
-            Valid up to:&nbsp;<em>{formatDate(validUntil) || '—'}</em>
-          </div>
-
-          {org.scopeText ? <div className="idcard__scope">{org.scopeText}</div> : null}
+        <div className="idcard__identity">
+          <FittedText className="idcard__name">{name}</FittedText>
+          <FittedText className="idcard__designation">{member.designation || 'सदस्य'}</FittedText>
+          <FittedText className="idcard__state">{member.state || ''}</FittedText>
+          <FittedText className="idcard__district">{member.district || ''}</FittedText>
+          <FittedText className="idcard__validity">
+            {`वैधता दिनांक: ${formatDate(member.validUntil) || '—'}`}
+          </FittedText>
+          <FittedText className="idcard__scope">{org.scopeText || ''}</FittedText>
         </div>
 
-        {/* member photo - dynamic, never stretched */}
         <div className="idcard__photo">
-          {photoUrl ? (
-            <img src={photoUrl} alt="" crossOrigin="anonymous" />
+          {member.photoUrl ? (
+            <img src={member.photoUrl} alt={`Portrait of ${name}`} crossOrigin="anonymous" />
           ) : (
-            <div className="idcard__photo-empty" aria-hidden="true">
-              <svg width="46" height="46" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                <path d="M20 21a8 8 0 0 0-16 0" />
-                <circle cx="12" cy="7" r="4" />
+            <div className="idcard__photo-empty" aria-label="Member photo">
+              <svg width="80" height="80" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 22v-2a8 8 0 0 1 16 0v2" />
               </svg>
             </div>
           )}
         </div>
 
-        {/* QR code - dynamic content, fixed position */}
-        {showQr ? (
-          <>
-            <div className="idcard__qr">
-              <img src={qrDataUrl} alt="" />
-            </div>
-            <div className="idcard__qr-label">Scan to verify</div>
-          </>
-        ) : null}
-
-        {/* authority seal - fixed slot, overlaps the photo */}
-        <div className="idcard__seal">
-          {org.sealUrl ? (
-            <img src={org.sealUrl} alt="" />
-          ) : (
-            <span className="idcard__seal-fallback">
-              {org.signatoryDesignation ?? 'Authorised Signatory'}
-            </span>
-          )}
-        </div>
-
-        {/* signatory - fixed identity, fixed position */}
+        {org.signatureUrl && <img className="idcard__signature" src={org.signatureUrl} alt="Authorised signature" />}
+        {org.sealUrl && <img className="idcard__seal" src={org.sealUrl} alt="Trust seal" />}
         <div className="idcard__signatory">
-          <div className="idcard__signatory-name">{org.signatoryName ?? ''}</div>
-          <div className="idcard__signatory-role">{org.signatoryDesignation ?? ''}</div>
+          <FittedText className="idcard__signatory-name">{org.signatoryName || ''}</FittedText>
+          <FittedText className="idcard__signatory-role">{org.signatoryDesignation || ''}</FittedText>
         </div>
+
+        {qrDataUrl && (
+          <div className="idcard__qr"><img src={qrDataUrl} alt="Scan to verify membership" /></div>
+        )}
+        {showDemoFlag && org.isDemo && <span className="idcard__demo-flag">Demo data</span>}
       </div>
 
-      {/*
-        The support / objective band (जनकल्याण विश्वास …) sat here as a navy pill
-        directly below the ALL INDIA pill. The client asked for that line to go,
-        so the band is no longer rendered. `org.supportText` is deliberately left
-        in the config - emptying the field in Settings is enough to bring it
-        back, and the band is where the space it used to occupy is reclaimed
-        (the body below was extended to match).
-      */}
-
-      {/* ================= FOOTER (fixed) ================= */}
       <footer className="idcard__footer">
-        <div className="idcard__footer-text">{org.footerText ?? ''}</div>
+        {String(org.footerText || '').split('\n').map((line, index) => (
+          <FittedText key={index} className={`idcard__footer-line idcard__footer-line--${index + 1}`}>
+            {line}
+          </FittedText>
+        ))}
       </footer>
-    </div>
+    </article>
   );
-}
+});
 
-export default forwardRef(IDCardTemplate);
+export default IDCardTemplate;

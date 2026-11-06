@@ -1,9 +1,7 @@
-import { useEffect } from 'react';
 import {
-  BrowserRouter, Routes, Route, Navigate, Outlet, useLocation,
+  BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams,
 } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import { hydrateStores } from './services/members';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/AdminLayout';
 import Login from './pages/Login';
@@ -28,6 +26,7 @@ import './styles/dashboard.css';
 import './styles/details.css';
 import './styles/settings.css';
 import './styles/simple.css';
+import './styles/responsive.css';
 
 /**
  * Back-compat for the pre-/admin paths.
@@ -70,19 +69,12 @@ function SignedIn() {
   );
 }
 
-export default function App() {
-  /*
-   * Warm the data caches before anything renders against them.
-   *
-   * getOrganization() and existingMemberIds() are synchronous by design (see
-   * services/members.js), so on first paint they return whatever the local
-   * fallback holds. This one-shot fetch replaces that with the real database
-   * row. It is a no-op in local mode.
-   */
-  useEffect(() => {
-    hydrateStores();
-  }, []);
+function MemberRoute({ edit = false }) {
+  const { memberId } = useParams();
+  return edit ? <EditMember key={memberId} /> : <MemberDetails key={memberId} />;
+}
 
+export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -91,12 +83,12 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/verify/:memberId" element={<Verify />} />
+          {import.meta.env.DEV && <Route path="/dev/card" element={<CardPreview />} />}
 
           {/* ---------- signed-in, standalone (no admin chrome) ---------- */}
           <Route element={<SignedIn />}>
             <Route path="/" element={<Home />} />
             <Route path="/generate" element={<SimplePage />} />
-            <Route path="/dev/card" element={<CardPreview />} />
           </Route>
 
           {/* ---------- signed-in: admin shell ---------- */}
@@ -106,8 +98,8 @@ export default function App() {
             <Route path="/admin/members/new" element={<AddMember />} />
             {/* /admin/members/new must precede the :memberId route so "new"
                 is not read as an ID number. */}
-            <Route path="/admin/members/:memberId/edit" element={<EditMember />} />
-            <Route path="/admin/members/:memberId" element={<MemberDetails />} />
+            <Route path="/admin/members/:memberId/edit" element={<MemberRoute edit />} />
+            <Route path="/admin/members/:memberId" element={<MemberRoute />} />
             <Route path="/admin/verification" element={<Verification />} />
             <Route path="/admin/reports" element={<Reports />} />
             <Route path="/admin/settings" element={<Settings />} />
