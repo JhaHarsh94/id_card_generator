@@ -1,5 +1,5 @@
 import logoUrl from '../assets/org/logo.png';
-import signatureUrl from '../assets/org/signature.png';
+import sealUrl from '../assets/org/stamp-client.png';
 import { validateOrganization } from '../../shared/organization.js';
 
 /** Organisation copy and assets from the supplied membership-card reference. */
@@ -14,8 +14,8 @@ export const organizationDefaults = {
   authorityText: 'GOVERNMENT OF UTTAR PRADESH',
   isoText: '',
   logoUrl,
-  sealUrl: signatureUrl,
-  signatureUrl,
+  sealUrl,
+  signatureUrl: null,
   signatoryName: 'मनोज कुमार कबीरा',
   signatoryDesignation: 'संस्थापक/अध्यक्ष',
   scopeText: 'अखिल भारतीय',
