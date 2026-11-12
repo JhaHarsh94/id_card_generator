@@ -16,8 +16,8 @@
     "dev:test-api": "node scripts/serve-test-api.mjs",
     "check": "npm run lint && npm test && npm run build",
     "preview": "vite preview",
-    "db:setup": "node --env-file-if-exists=.env.local scripts/setup-db.mjs",
-    "admin:create": "node --env-file-if-exists=.env.local scripts/setup-admin.mjs"
+    "db:setup": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/setup-db.mjs",
+    "admin:create": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/setup-admin.mjs"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
